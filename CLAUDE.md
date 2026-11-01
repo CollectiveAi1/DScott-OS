@@ -5,6 +5,8 @@
 - Nothing outbound (email, text, calendar write, post, payment) is sent directly. It becomes a row in `approvals`; delivery happens only after Devon approves and only in live mode.
 - Schema changes: edit `src/db/schema.ts`, then `npm run db:generate`. Never hand-edit applied migrations. Index every foreign key. Money is integer cents.
 - No secrets in code. Env vars or encrypted `settings.encrypted_keys` only.
-- Before pushing: `npm run typecheck && npm test && npm run build`.
+- Work moves DEFINE → PLAN → BUILD → VERIFY → REVIEW → SHIP. Read `docs/CONTEXT.md` first: it holds domain terms, where specs, plans and ADRs go, and the gate for each stage.
+- Every module starts with a spec in `docs/specs/` before code. Root-cause a bug before changing code for it.
+- Before pushing: `npm run check` (typecheck, tests, production build).
 - UI: tokens in `src/app/globals.css`; no gradients, glass or glow by default; semantic HTML; planned screens appear in the sidebar without links, never as dead links.
 - Log decisions made at each phase gate in `docs/build-log.md`; that log becomes the reusable OS template.

@@ -32,6 +32,7 @@ Stop the dev server before running `db:migrate` or `db:seed`: the embedded datab
 | `npm run dev` | Local dev server |
 | `npm run typecheck` / `npm test` | TypeScript check / unit tests |
 | `npm run build` / `npm start` | Production build / server |
+| `npm run check` | Typecheck + tests + build: the gate before every push |
 | `npm run db:generate` | Write a new migration after changing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations (embedded DB or `DATABASE_URL`) |
 | `npm run db:seed` | Starter boards, draft pipelines, settings row (safe to re-run) |
