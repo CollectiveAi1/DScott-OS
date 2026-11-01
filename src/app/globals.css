@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/jetbrains-mono";
+
+/*
+  Theme tokens. The whole look lives here: swap these values to re-skin the OS.
+  Current skin: Collective AI parent system, 60:30:10 (navy base, navy cards, amber gold accent).
+*/
+@theme {
+  --color-base: #050a18;
+  --color-surface: #0d1326;
+  --color-surface-raised: #111827;
+  --color-line: #1e2740;
+  --color-line-strong: #2c3757;
+  --color-ink: #f5f5f5;
+  --color-muted: #8b9bae;
+  --color-accent: #d4a843;
+  --color-accent-ink: #050a18;
+  --color-danger: #e2735f;
+
+  --font-sans: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
