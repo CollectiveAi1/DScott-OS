@@ -1,0 +1,8 @@
+date,start,end,type,title,location,notes
+2026-11-07,18:00,20:30,game,Home vs Dayton,Covelli Center,SAMPLE DATA - fictional opponents and times
+2026-11-09,09:00,10:30,practice,Team practice,Practice gym,
+2026-11-10,07:00,,s&c,Lift,Weight room,End time assumed: 90 minutes
+2026-11-12,19:00,,game,Away vs Toledo,Savage Arena,End time assumed: 2 hours
+2026-11-14,,,travel,Road trip to Toledo,,Departs Saturday; see end_date column in the travel sample below
+2026-11-16,18:30,20:00,team event,Film session,Team room,
+2026-11-18,09:00,10:30,practice,Team practice,Practice gym,"Scouting Dayton, bring notes"

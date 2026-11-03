@@ -2,15 +2,16 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M4 shipped (Family sync)
+## Status: M5 shipped (Schedule import)
 
 | Done | Not yet |
 | --- | --- |
 | Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Learning, Contacts, Pipelines, Approvals, Operator (M6–M9) |
-| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Basketball schedule import, waiting on the official schedule (M5) |
+| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Contacts and Pipelines (M6) |
 | Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Vercel project + Supabase database (needs a Supabase project) |
 | Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Approvals delivery, the daily brief and the weekly review (M7–M9) |
 | Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | Shared rate limit store (current limit is per instance) |
+| Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | The official team schedule itself, which has not arrived |
 | Command: capture, live tiles, due this week, Conflicts, Needs attention | |
 | Settings: delivery mode, time zone, protected time, connections, export, job history | |
 | Encryption for stored keys, job runner, `/api/cron/tick` | |
@@ -143,10 +144,37 @@ each event links back to it.
 If Google revokes access — or the Testing-mode expiry hits — the connection is marked broken,
 syncing stops, and both Settings and Command say to reconnect.
 
+## Importing the team schedule
+
+`/schedule/import`. Basketball only, and nothing is written until you have seen a preview and
+confirmed it.
+
+- **CSV or TSV**, pasted or uploaded. Header line, then
+  `date, start, end, type, title, location, notes` — plus `end_date` for travel. Column names
+  are matched loosely, and dates and times accept the usual forms (`2026-11-07` or `11/7/2026`,
+  `18:00` or `6:00 PM`).
+- **Types**: practice, s&c, team event, game, travel.
+- **A missing end time** is assumed — two hours for a game, ninety minutes otherwise — and the
+  preview flags every row it guessed on.
+- **A PDF, an image or free text** goes through the model instead, and needs `ANTHROPIC_API_KEY`.
+  Without a key those options are disabled with a line saying so. The document is treated as
+  data, never as instructions, and every row it produces still faces the same preview.
+
+The preview groups rows into new, changed, unchanged, and will-be-removed. **Removal only ever
+touches future events** that an earlier import created and this file no longer contains; past
+events are always kept.
+
+Importing the same file twice changes nothing — identity comes from the content, so a re-run is
+a genuine no-op. Changing one row's time updates that one event in place, keeping its notes and
+any conflict you acknowledged. Notes you write on an imported event are never overwritten by a
+later import.
+
+`docs/samples/basketball-schedule.csv` is a clearly-labelled fictional file for trying it out.
+
 ## Deploy (Vercel + Supabase)
 
 1. Create a Supabase project. Copy the pooled connection string (transaction pooler, port 6543) into `DATABASE_URL`.
-2. Import this repo in Vercel. Set `AUTH_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET` (`openssl rand -base64 32` each), `DATABASE_URL`, `APP_URL`, `OS_TIMEZONE`, and the two `GOOGLE_*` variables.
+2. Import this repo in Vercel. Set `AUTH_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET` (`openssl rand -base64 32` each), `DATABASE_URL`, `APP_URL`, `OS_TIMEZONE`, the two `GOOGLE_*` variables, and `ANTHROPIC_API_KEY`.
 3. Run `DATABASE_URL=... npm run db:migrate && npm run db:seed` once from your machine.
 4. Open the deployed URL. It goes to `/setup`.
 
@@ -159,6 +187,11 @@ syncing stops, and both Settings and Command say to reconnect.
 - Sign-in is limited to 5 failures per 15 minutes per IP. The window is in memory, so on Vercel it is per function instance; move it to a shared store before going public.
 - Nothing reaches another person without an approval. The `approvals` table carries an idempotency key so a retried send cannot fire twice. Sandbox mode records approvals and delivers nothing.
 - Look: theme tokens live in `src/app/globals.css` (`@theme`). Current skin is the Collective AI parent system: deep navy, amber gold, Space Grotesk, JetBrains Mono. Swap the tokens to re-skin.
+
+## A correction to the PRD
+
+`docs/PRD.md` §6 names the models `claude-sonnet-5-5` and `claude-haiku-5-5`. Those ids do not
+exist. The code uses `claude-sonnet-5`, overridable with `OPERATOR_MODEL`.
 
 ## Known advisories
 

@@ -254,6 +254,8 @@ export const calendarEvents = pgTable(
     externalId: text("external_id"),
     // Link back to the event where it is owned, for anything this OS does not mirror.
     externalUrl: text("external_url"),
+    // The id of the import run that last wrote this row.
+    importBatch: text("import_batch"),
     arena: arenaEnum("arena").notNull(),
     ...origin,
     ...stamps,
@@ -261,6 +263,8 @@ export const calendarEvents = pgTable(
   (t) => [
     index("calendar_events_range_idx").on(t.startsAt, t.endsAt),
     uniqueIndex("calendar_events_source_external_idx").on(t.source, t.externalId),
+    // "What did earlier imports leave behind", for the import preview.
+    index("calendar_events_import_idx").on(t.source, t.importBatch),
   ],
 );
 

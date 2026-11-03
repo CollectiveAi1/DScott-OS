@@ -15,6 +15,7 @@
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "@electric-sql/pglite": "^0.5.14",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",

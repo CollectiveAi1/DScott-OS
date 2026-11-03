@@ -106,12 +106,20 @@ export default async function SchedulePage({
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-semibold">Schedule</h1>
-        <Link
-          href="/schedule/new"
-          className="rounded-[--radius-control] bg-accent px-4 py-2 text-sm font-semibold text-accent-ink"
-        >
-          New event
-        </Link>
+        <span className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/schedule/import"
+            className="rounded-[--radius-control] border border-line-strong px-3 py-2 text-sm text-ink hover:border-accent hover:text-accent"
+          >
+            Import schedule
+          </Link>
+          <Link
+            href="/schedule/new"
+            className="rounded-[--radius-control] bg-accent px-4 py-2 text-sm font-semibold text-accent-ink"
+          >
+            New event
+          </Link>
+        </span>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">

@@ -294,3 +294,76 @@ Reconnect in Settings and in Command → Needs attention, and the cron tick stil
 still ran the jobs after it; Disconnect armed, confirmed, cleared the connection and the warning.
 An all-day family birthday placed against the existing meeting-and-game clash added no new
 conflicts, which is the narrowed rule doing its job.
+
+## 2026-11-03 · M5 · Basketball schedule import
+
+Branch `m5-schedule-import`, off `main`. Spec `docs/specs/SPEC-005-schedule-import.md`, plan
+`docs/plans/PLAN-005-schedule-import.md`.
+
+**Shipped**
+
+- `src/modules/import/`: an RFC 4180 CSV reader, the row rules, content-derived identity, the
+  diff, the model path, the service and the screen.
+- `/schedule/import`, linked from Schedule. `docs/samples/basketball-schedule.csv`.
+- Migration `0005_import`: `calendar_events.import_batch`, indexed with `source`.
+- `@anthropic-ai/sdk` added — named in PRD §6, so in-stack rather than a new vendor.
+
+**Decided at this gate**
+
+- **Preview, then write. Never both at once.** Every path through this module ends at a preview
+  Devon confirms. Confirm re-parses the same source rather than trusting a round-tripped plan:
+  the parser is deterministic, so what he approved is what runs, and there is no half-built
+  import sitting in a table going stale.
+- **Identity is content**, exactly the hash PRD §8.5 specifies, with the title normalised for
+  case and spacing. Two exports of one schedule differ in whitespace far more often than in
+  substance, and an importer that duplicated a season over a double space would be useless.
+- **A time edit is a move, not a delete and an add.** The time is part of the hash, so a moved
+  practice gets a new id. When exactly one dropped row shares its date, type and title, the two
+  are paired and the existing row is updated in place — keeping its id, its notes and any
+  acknowledged conflict. Ambiguous cases fall back to add-and-remove rather than guessing.
+- **Removal is future-only and confirm-only.** A past game dropped from a revised schedule
+  stays. It happened; the record is worth more than a tidy table.
+- **One row interpreter for CSV and the model.** The spec promised "the model is a parser, not a
+  second code path"; extracting `interpretRow` is what made that true. Same defaults, same
+  types, same error text, whichever way the schedule arrived.
+- **The document is data, not instructions.** Said in the prompt, enforced by giving the model
+  no tools, and backstopped by the preview: the worst a hostile PDF achieves is rows Devon
+  declines.
+- **An assumed end time is shown as an assumption**, in its own group, on the rows that made it.
+
+**Found while building**
+
+- **Notes would have been overwritten on every re-import.** The CSV carries a notes column, but
+  `notes` is also the one field Devon can edit on an imported event (M3) — the same trap M4
+  dodged with Google's `description`. Notes are written on create and left alone thereafter.
+- **"A re-import is a no-op" was nearly a near-truth.** Unchanged rows were going to get a fresh
+  batch id and a bumped `updated_at`. They are now not touched at all, and a test asserts the
+  timestamps are identical across two imports.
+- A PDF posted through a server action hits Next's 1 MB default body limit. Raised to 8 MB, with
+  the importer refusing anything larger itself and naming the actual size.
+- Two of my own tests were wrong rather than the code: a title differing only in spacing really
+  is a change worth showing, and a practice starting exactly when a meeting ends really does not
+  overlap.
+
+**A correction to the PRD**
+
+§6 names `claude-sonnet-5-5` and `claude-haiku-5-5`. **Neither model id exists.** The code uses
+`claude-sonnet-5`, overridable with `OPERATOR_MODEL`. Recorded in the spec and the README, and
+worth fixing in the PRD before M9 builds the Operator on top of it.
+
+**Deferred**
+
+- Editing rows inside the preview. A wrong row is fixed in the source and re-previewed; an
+  editable preview is a spreadsheet, and Devon already has one.
+- Importing into any arena but Basketball. Enforced in the service, not the UI, so it cannot be
+  widened by accident.
+
+**Gate: passed.** `npm run check` green (typecheck, 317 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory; the new
+dependency adds none. Exercised against `next dev` with the sample file: 7 rows previewed with
+2 assumptions flagged and nothing written; confirmed as 7 added; re-previewing the same file
+reported 7 unchanged and did not even offer a Confirm button; editing one practice's time
+previewed as "1 changed · moved" and wrote 1 update with the row keeping its id; a file with a
+broken line, a dropped game and a new game previewed as 1 new, 2 to remove, 1 error on line 4
+with the reason, and confirmed exactly that. Imported events render on the week grid beside
+manual ones and open read-only apart from notes. No horizontal overflow at 375 px.

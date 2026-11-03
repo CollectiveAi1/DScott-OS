@@ -10,6 +10,12 @@ const securityHeaders = [
 
 const config: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Schedule imports post a PDF or an image through a server action. The default cap is 1 MB,
+    // which rejects most real documents; the importer refuses anything over 8 MB itself, with a
+    // message that says so.
+    serverActions: { bodySizeLimit: "8mb" },
+  },
   // PGlite ships WASM and must stay a plain Node require, not a bundled module.
   serverExternalPackages: ["@electric-sql/pglite"],
   async headers() {
