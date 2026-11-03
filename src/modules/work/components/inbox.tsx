@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Select } from "@/components/form";
 import type { FormState } from "@/lib/auth/actions";
@@ -168,15 +169,13 @@ export function MiscInbox({ items, boards }: { items: Task[]; boards: Board[] })
               <p className="text-sm text-ink">{task.title}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <DoneButton taskId={task.id} />
-                <span
-                  title="Events arrive with Schedule (M3)."
-                  className="cursor-not-allowed rounded-[--radius-control] border border-line px-2 py-1 text-xs text-muted/50"
-                  aria-disabled="true"
+                <Link
+                  href={`/schedule/new?from=${task.id}`}
+                  className="rounded-[--radius-control] border border-line-strong px-2 py-1 text-xs text-muted hover:border-accent hover:text-accent"
                 >
                   Make event
-                </span>
+                </Link>
                 <DeleteButton taskId={task.id} />
-                <span className="text-xs text-muted/60">Events arrive with Schedule (M3).</span>
               </div>
               <TriageForm task={task} boards={boards} />
             </li>

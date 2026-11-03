@@ -12,7 +12,7 @@ const MENU: { group: string; screens: Screen[] }[] = [
     group: "Daily",
     screens: [
       { label: "Command", href: "/" },
-      { label: "Schedule", ships: "v1" },
+      { label: "Schedule", href: "/schedule" },
       { label: "Operator", ships: "v1" },
       { label: "Approvals", ships: "v1" },
       { label: "Work", href: "/work" },

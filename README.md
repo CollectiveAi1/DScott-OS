@@ -2,18 +2,41 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M2 shipped (Work + Misc capture)
+## Status: M3 shipped (Schedule)
 
 | Done | Not yet |
 | --- | --- |
-| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Schedule, Learning, Contacts, Pipelines, Approvals, Operator (M3–M9) |
+| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Learning, Contacts, Pipelines, Approvals, Operator (M6–M9) |
 | Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Google Calendar sync for Family (M4) |
 | Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Basketball schedule import, waiting on the official schedule (M5) |
-| Command: capture, live tiles, due this week, Needs attention | Vercel project + Supabase database (needs a Supabase project) |
-| Settings: delivery mode, time zone, protected time, data export, job history, password | The four job bodies — each ships with its own milestone |
-| Encryption for stored keys, job runner, `/api/cron/tick` | Shared rate limit store (current limit is per instance) |
+| Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Vercel project + Supabase database (needs a Supabase project) |
+| Command: capture, live tiles, due this week, Conflicts, Needs attention | The four job bodies — each ships with its own milestone |
+| Settings: delivery mode, time zone, protected time, data export, job history, password | Shared rate limit store (current limit is per instance) |
+| Encryption for stored keys, job runner, `/api/cron/tick` | |
 | Schema for all v1 tables, tracked migrations, idempotent seed | |
-| Health check at `/api/health`, security headers | |
+
+## Schedule
+
+Four arenas on one calendar. Agenda on phones, Week on desktop, plus Day and Month; every view
+is a URL, so any of them can be bookmarked or shared.
+
+**How events are stored** — the contract the Google sync and the schedule importer write against:
+
+- `starts_at` and `ends_at` are instants (`timestamptz`). The wall-clock time is rebuilt by
+  rendering in the time zone set in Settings, never stored separately.
+- Intervals are half-open, `[start, end)`. A 10:00–11:00 meeting and an 11:00–12:00 call do not
+  overlap.
+- All-day runs midnight to **exclusive** midnight: Nov 5–7 is stored as Nov 5 00:00 → Nov 8
+  00:00, matching Google's `start.date`/`end.date`.
+- Travel is all-day and multi-day, departure through return.
+
+**Conflicts.** Two events clash when they overlap and at least one is occupying real hours. Two
+all-day events never clash, and neither do two Basketball events — a practice inside a team event
+is normal. A timed event running into protected time is flagged too. Clashes appear on both
+events and on Command for the next 14 days; **Acknowledge** hides a pair, and moving either event
+brings it back.
+
+Events from Google or an import are read-only apart from notes, and say where they came from.
 
 ## Quick capture
 

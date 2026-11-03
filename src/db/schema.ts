@@ -250,6 +250,30 @@ export const calendarEvents = pgTable(
   ],
 );
 
+/**
+ * A conflicting pair Devon has seen and accepted. The pair is stored in canonical order — the
+ * smaller id is always event_a_id — so the unique index holds one row per pair however he
+ * reached it. Editing either event's time deletes its acks, bringing the conflict back.
+ */
+export const conflictAcks = pgTable(
+  "conflict_acks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventAId: uuid("event_a_id")
+      .notNull()
+      .references(() => calendarEvents.id, { onDelete: "cascade" }),
+    eventBId: uuid("event_b_id")
+      .notNull()
+      .references(() => calendarEvents.id, { onDelete: "cascade" }),
+    ...stamps,
+  },
+  (t) => [
+    uniqueIndex("conflict_acks_pair_idx").on(t.eventAId, t.eventBId),
+    index("conflict_acks_a_idx").on(t.eventAId),
+    index("conflict_acks_b_idx").on(t.eventBId),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Learning (Collective AI arena, personal)
 // ---------------------------------------------------------------------------

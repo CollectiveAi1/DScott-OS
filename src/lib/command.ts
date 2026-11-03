@@ -3,7 +3,10 @@ import { and, asc, count, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-o
 import { getDb } from "@/db/client";
 import { approvals, calendarEvents, tasks, timeline } from "@/db/schema";
 import { staleCaptures } from "@/modules/work/queries";
+import { conflictsInRange, type Conflict } from "@/modules/schedule/queries";
+import { startOfDayInstant } from "./zoned";
 import { addDays, dateInZone } from "./dates";
+import { getSettings } from "./settings";
 
 export type CommandSnapshot = {
   today: string;
@@ -15,7 +18,11 @@ export type CommandSnapshot = {
   dueList: { id: string; title: string; due: string | null; arena: string; priority: string }[];
   /** Things that have gone stale and need Devon, not the Operator. More kinds arrive with M4 and M6. */
   needsAttention: { id: string; kind: string; title: string; detail: string; href: string }[];
+  /** Unacknowledged clashes in the next 14 days, plus anything running into protected time. */
+  conflicts: Conflict[];
 };
+
+const CONFLICT_DAYS = 14;
 
 export async function loadCommand(timeZone: string, now = new Date()): Promise<CommandSnapshot> {
   const db = getDb();
@@ -24,7 +31,7 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const openWithDue = and(eq(tasks.status, "open"), isNotNull(tasks.due));
 
-  const [waiting, dueWeek, overdueRows, moved, nextEvent, dueList, stale] = await Promise.all([
+  const [waiting, dueWeek, overdueRows, moved, nextEvent, dueList, stale, conflicts] = await Promise.all([
     db.select({ n: count() }).from(approvals).where(eq(approvals.status, "waiting")),
     db.select({ n: count() }).from(tasks).where(and(openWithDue, gte(tasks.due, today), lte(tasks.due, weekEnd))),
     db.select({ n: count() }).from(tasks).where(and(openWithDue, lt(tasks.due, today))),
@@ -47,6 +54,7 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
       .orderBy(asc(tasks.due))
       .limit(12),
     staleCaptures(db, now),
+    conflictsForCommand(timeZone, today, now),
   ]);
 
   return {
@@ -64,5 +72,16 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
       detail: `Captured ${dateInZone(task.createdAt, timeZone)} and still in the Misc inbox.`,
       href: "/work",
     })),
+    // Acknowledged pairs are hidden: Devon has already decided that one is fine.
+    conflicts: conflicts.filter((conflict) => conflict.kind === "protected" || !conflict.acknowledged),
   };
+}
+
+async function conflictsForCommand(timeZone: string, today: string, now: Date): Promise<Conflict[]> {
+  const { protectedTime } = await getSettings();
+  const days = Array.from({ length: CONFLICT_DAYS }, (_, index) => addDays(today, index));
+  const from = startOfDayInstant(today, timeZone);
+  const to = startOfDayInstant(addDays(today, CONFLICT_DAYS), timeZone);
+  // A conflict earlier today is history; the panel is about what is still ahead.
+  return conflictsInRange(getDb(), new Date(Math.max(from.getTime(), now.getTime())), to, protectedTime, timeZone, days);
 }

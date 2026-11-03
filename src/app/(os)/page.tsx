@@ -4,8 +4,10 @@ import { requireOwner } from "@/lib/auth/session";
 import { loadCommand } from "@/lib/command";
 import { greetingFor } from "@/lib/dates";
 import { getSettings } from "@/lib/settings";
-import { ArenaTag, type ArenaName } from "@/components/arena-tag";
+import { arenaLabel, ArenaTag, type ArenaName } from "@/components/arena-tag";
 import { QuickCapture } from "@/modules/work/components/quick-capture";
+import { AcknowledgeButton } from "@/modules/schedule/components/acknowledge";
+import { eventRange } from "@/modules/schedule/components/event-chip";
 
 export const metadata: Metadata = { title: "Command" };
 
@@ -97,6 +99,57 @@ export default async function CommandPage() {
           </ul>
         )}
       </section>
+
+      {snapshot.conflicts.length > 0 ? (
+        <section aria-labelledby="conflicts-heading" className="mt-10">
+          <h2 id="conflicts-heading" className="mb-3 text-lg font-semibold">
+            Conflicts
+          </h2>
+          <ul className="divide-y divide-line rounded-[--radius-panel] border border-line bg-surface">
+            {snapshot.conflicts.map((conflict) =>
+              conflict.kind === "pair" ? (
+                <li key={`${conflict.a.id}+${conflict.b.id}`} className="px-4 py-3">
+                  <p className="font-mono text-xs uppercase tracking-wider text-danger">Double-booked</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {[conflict.a, conflict.b].map((event) => (
+                      <li key={event.id} className="text-sm">
+                        <Link href={`/schedule/${event.id}`} className="text-ink hover:text-accent">
+                          {event.title}
+                        </Link>
+                        <span className="ml-2 font-mono text-xs text-muted">
+                          {eventRange(event, timezone)} · {arenaLabel(event.arena as ArenaName)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-2">
+                    <AcknowledgeButton a={conflict.a.id} b={conflict.b.id} />
+                  </div>
+                </li>
+              ) : (
+                <li key={`${conflict.event.id}+${conflict.hit.date}+${conflict.hit.block.label}`} className="px-4 py-3">
+                  <p className="font-mono text-xs uppercase tracking-wider text-danger">Protected time</p>
+                  <p className="mt-1 text-sm">
+                    <Link href={`/schedule/${conflict.event.id}`} className="text-ink hover:text-accent">
+                      {conflict.event.title}
+                    </Link>
+                    <span className="ml-2 font-mono text-xs text-muted">
+                      {eventRange(conflict.event, timezone)} · {conflict.hit.date}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    Runs into “{conflict.hit.block.label}”. Move the event, or change the block in{" "}
+                    <Link href="/settings" className="underline hover:text-ink">
+                      Settings
+                    </Link>
+                    .
+                  </p>
+                </li>
+              ),
+            )}
+          </ul>
+        </section>
+      ) : null}
 
       {snapshot.needsAttention.length > 0 ? (
         <section aria-labelledby="attention-heading" className="mt-10">

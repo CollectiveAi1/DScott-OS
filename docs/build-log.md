@@ -136,3 +136,85 @@ Move (which omits the current column), drawer edit with notes, every filter and 
 complete leaving Command's due list, two-step delete, project create and its count moving to 0/1.
 At 375 px: no horizontal overflow, the nav collapses behind a menu button, and the capture bar
 captured `Order team warmups #basketball due:mon` from the bottom of the screen.
+
+## 2026-11-02 · M3 · Schedule
+
+Branch `m3-schedule`, off `main` (M1 and M2 are merged). Spec `docs/specs/SPEC-003-schedule.md`,
+plan `docs/plans/PLAN-003-schedule.md`.
+
+**Shipped**
+
+- `src/lib/zoned.ts`: wall time ↔ instant, and day, week and month grids, all in a named zone.
+- `src/modules/schedule/`: the conflict rule, arena-driven kinds, queries, service, actions,
+  form schema, and the view components.
+- `/schedule` with Agenda, Week, Day and Month; `/schedule/new` and `/schedule/<id>`.
+- Conflicts on both events and on Command for the next 14 days, with Acknowledge.
+- Protected time hatched behind Week and Day.
+- Migration `0003_schedule`: `conflict_acks`, unique on the ordered pair, both FKs indexed.
+- "Make event" in the Misc inbox is a real link now, prefilled, and completes the capture.
+
+**Decided at this gate**
+
+- **Half-open intervals, `[start, end)`, everywhere.** Back-to-back scheduling is the normal
+  case, not a conflict. Every comparison in the module follows it.
+- **All-day is midnight to exclusive midnight.** Nov 5–7 stores as Nov 5 00:00 → Nov 8 00:00.
+  This is deliberately Google's `start.date`/`end.date` shape so M4's mapping is a copy rather
+  than a conversion, and M5's importer has one rule to follow. Written into the README as a
+  contract, not left implicit.
+- **One file converts between instants and wall time.** `zoned.ts` is the only place that knows
+  how; everything else asks it. Two passes over the zone offset settles DST.
+- **Both DST ambiguities have a stated answer.** A wall time inside the spring-forward gap
+  resolves to the instant the clock jumps to; a time that happens twice in autumn resolves to the
+  first. Picking a side consistently matters more than which side, and both are tested.
+- **Agenda and Week are both rendered when no view is chosen**, with CSS picking by width. That
+  is the PRD's per-device default with no server-side viewport guess, no JS and no flash.
+- **Rule 3 is basketball only.** A practice inside a team event is normal; two Collective
+  meetings double-booked is exactly what Devon wants caught.
+- **Protected-time clashes cannot be acknowledged.** The ack table keys on two event ids, and a
+  block is a settings rule. The honest fix is to move the event or change the block.
+- **The grid is a full 24 hours**, scrolled to 07:00 on open. Practices and travel do not sit
+  inside 9–5, and a grid that hides half the day hides conflicts.
+
+**Open question for Devon at the M4 gate**
+
+Rule 5, taken literally as PRD §8.3 states it, makes **any** all-day event conflict with every
+timed event it covers — not just travel. It ships that way. But M4 syncs the Family calendar out
+of Gmail, where all-day entries are the common case (birthdays, holidays, school closures), and
+on the first sync one all-day row will clash with every timed event that day. A conflict has to
+mean something or the panel stops being read.
+
+The fix is one condition in `eventsConflict` (`rule 5 applies when the all-day side is travel`).
+It is not being decided here: the call wants real synced data in front of it. **Raise this at the
+M4 gate.**
+
+**Found while building**
+
+- **A zod message reached the screen**: "Invalid input: expected nonoptional, received
+  undefined", in front of Devon, which §6.1 forbids. Two causes behind it — an unchecked
+  checkbox and a hidden time input send *no field at all*, not an empty one. Form parsing moved
+  into `form-schema.ts` with its own tests, one of which asserts no raw zod wording can escape
+  for any missing field.
+- **The React form-reset trap, for the third time.** M1 hit it on a text field, M2 on checkboxes
+  and a select, M3 on the event form's arena and kind selects — and this one was the worst of the
+  three: after a refusal the selects reverted while React's tree still held the chosen values, so
+  the *next* submit would have posted the wrong arena. The rule, now proven enough to state once
+  and apply everywhere: **any control React cannot diff back into place — checkbox, radio,
+  select — must be remounted when a form action settles; text inputs re-apply on their own.**
+- A test of mine was wrong rather than the code: a practice starting exactly when a meeting ended
+  was expected to clash. Half-open intervals say otherwise, and they are right.
+
+**Deferred**
+
+- Drag to move or resize an event. Editing is a form, as everywhere else in v1.
+- Recurring events. Nothing in v1 creates one: Google expands instances, the importer writes
+  rows, and protected time is a settings rule.
+- Overlap-aware layout in Month. Cells list events; Week and Day are where overlap is read.
+
+**Gate: passed.** `npm run check` green (typecheck, 192 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory. Exercised
+against `next dev`: the PRD's own example — a Collective meeting against a game — appeared on
+Command with both titles and times, acknowledging hid it, and editing the meeting's time brought
+it back with the new times. Travel auto-selected all-day and stored Nov 6 → Nov 9 exclusive.
+Month rendered 42 cells opening on 2026-10-26. Arena-driven kinds switched with the arena. A
+refused submit held every field. Capture → Make event → prefilled form → capture completed. At
+375 px: Agenda replaces Week, and the wide grids scroll inside themselves while the page does not.
