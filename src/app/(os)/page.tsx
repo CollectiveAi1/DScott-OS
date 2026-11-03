@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireOwner } from "@/lib/auth/session";
 import { loadCommand } from "@/lib/command";
 import { greetingFor } from "@/lib/dates";
 import { getSettings } from "@/lib/settings";
+import { ArenaTag, type ArenaName } from "@/components/arena-tag";
+import { QuickCapture } from "@/modules/work/components/quick-capture";
 
 export const metadata: Metadata = { title: "Command" };
-
-const ARENA_LABEL: Record<string, string> = {
-  collective: "Collective AI",
-  basketball: "Basketball",
-  family: "Family",
-  misc: "Misc",
-};
 
 function Tile({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
@@ -48,6 +44,10 @@ export default async function CommandPage() {
         </h1>
       </header>
 
+      <section aria-label="Quick capture" className="mb-8">
+        <QuickCapture />
+      </section>
+
       <section aria-label="At a glance" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Tile label="Waiting for approval" value={String(snapshot.waitingApprovals)} />
         <Tile
@@ -69,22 +69,53 @@ export default async function CommandPage() {
         </h2>
         {snapshot.dueList.length === 0 ? (
           <p className="rounded-[--radius-panel] border border-dashed border-line-strong px-4 py-6 text-sm text-muted">
-            Nothing due. Tasks arrive with the Work module in v1.
+            Nothing due this week. Capture something above, or open{" "}
+            <Link href="/work" className="underline hover:text-ink">
+              Work
+            </Link>
+            .
           </p>
         ) : (
           <ul className="divide-y divide-line rounded-[--radius-panel] border border-line bg-surface">
-            {snapshot.dueList.map((task) => (
-              <li key={task.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                <span>{task.title}</span>
-                <span className="shrink-0 font-mono text-xs text-muted">
-                  {ARENA_LABEL[task.arena]} · {task.due}
-                  {task.due && task.due < snapshot.today ? " · overdue" : ""}
-                </span>
-              </li>
-            ))}
+            {snapshot.dueList.map((task) => {
+              const overdue = task.due !== null && task.due < snapshot.today;
+              return (
+                <li key={task.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
+                  <Link href={`/work?view=list&task=${task.id}`} className="hover:text-accent">
+                    {task.title}
+                  </Link>
+                  <span className="flex shrink-0 items-center gap-3">
+                    <ArenaTag arena={task.arena as ArenaName} />
+                    <span className={`font-mono text-xs ${overdue ? "text-danger" : "text-muted"}`}>
+                      {task.due}
+                      {overdue ? " · overdue" : ""}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      {snapshot.needsAttention.length > 0 ? (
+        <section aria-labelledby="attention-heading" className="mt-10">
+          <h2 id="attention-heading" className="mb-3 text-lg font-semibold">
+            Needs attention
+          </h2>
+          <ul className="divide-y divide-line rounded-[--radius-panel] border border-line bg-surface">
+            {snapshot.needsAttention.map((item) => (
+              <li key={item.id} className="px-4 py-3">
+                <p className="font-mono text-xs uppercase tracking-wider text-danger">{item.kind}</p>
+                <Link href={item.href} className="mt-1 block text-sm text-ink hover:text-accent">
+                  {item.title}
+                </Link>
+                <p className="mt-0.5 text-xs text-muted">{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -60,3 +60,79 @@ Branch `m1-foundations`. Spec `docs/specs/SPEC-001-foundations.md`, plan `docs/p
 - `/settings` ships 28.7 kB of route JS, most of it the ~600-entry time zone list. Measured and accepted; a datalist would cut it if it ever matters.
 
 **Gate: passed.** `npm run check` green (typecheck, 55 tests, production build). `npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory already in the README; no new findings. Exercised against `next dev` on the embedded database: setup, protected time rejected then saved then removed, time zone saved and re-rendered, export downloaded with no secret fields, and the cron route refused four ways before running the registry and recording it in Settings. Settings has no horizontal overflow at 375 px.
+
+## 2026-11-02 · M2 · Work + Misc capture
+
+Branch `m2-work`, stacked on `m1-foundations` (M1 is not merged yet, and M2 depends on it).
+Spec `docs/specs/SPEC-002-work.md`, plan `docs/plans/PLAN-002-work.md`.
+
+**Shipped**
+
+- `src/modules/work/`: `capture.ts` (pure parser), `filters.ts` (pure, URL in → typed filters out),
+  `queries.ts`, `service.ts`, `actions.ts`, components. This is the module shape every later
+  milestone copies.
+- Quick capture on Command and in a bar fixed to the bottom of the screen on phones.
+- `/work`: Misc inbox with triage, board view, list view, four composable filters, Move to…,
+  Complete, and a task drawer at `?task=<id>`.
+- `/work/projects`: create, status, done/total over linked tasks.
+- Command: quick capture, Needs attention, and a due list that links into the drawer.
+- Arena colour tokens and `<ArenaTag>`; sidebar collapses to a menu button under `md`.
+- Migration `0002_work`: `tasks.notes`, `boards.position`, two indexes.
+
+**Decided at this gate**
+
+- **The whole Work screen is URL state.** View, board, filters and the open drawer are query
+  parameters, so every view is a plain server render: shareable, refresh-proof, back-button
+  correct, and working without JS. The cost is a round trip per filter change, which is the
+  right trade on a single-owner instance.
+- **A weekday means its next occurrence including today.** `due:mon` typed on a Monday is today,
+  so it agrees with `due:today` instead of quietly meaning eight days out.
+- **Anything the parser does not recognise stays in the title.** `#kinetic` and `due:whenever`
+  survive into the text. A capture that silently dropped a word would be worse than one that
+  shows it did not understand, and quick capture must never lose the thought.
+- **Tagging is not triage.** A capture tagged `#basketball` still lands in the Misc inbox: the
+  tag says where it belongs, sorting says it is sorted.
+- **Completing clears `fromMisc`.** A capture you finish is triaged by finishing it.
+- **A column is only valid if the board has it**, checked in the service, so a forged POST cannot
+  invent a column. Choosing no board drops the column rather than orphaning it.
+- **Deleting takes two presses** instead of a modal. A dialog needs client state and a focus trap
+  to be accessible; an arming button needs neither.
+- **"Make event" ships disabled with its reason** rather than hidden, following the PRD's own
+  pattern for model parsing without a key (§8.5). M3 fills it in.
+- **Unsorted comes first on a board.** A task whose column is missing or no longer on the board
+  is grouped at the front, so nothing a board holds is invisible.
+
+**Found while building**
+
+- **The due tile and the due list disagreed.** The list excluded untriaged captures, the tile
+  never did, so Command read "3" above a list of 2. The tile was right: a capture with a date is
+  due whether or not it has been filed onto a board. The list now includes them and a test
+  asserts the two reconcile.
+- **Work opened on an empty board.** Boards sorted by name put "Collective AI" first while the
+  day's tasks sat on "This week". Ordering by `created_at` did not help — the seed writes all
+  four in one statement, so they share a timestamp and the tie falls back to the alphabet. Added
+  `boards.position`, set by the seed. Spec updated (§11) rather than left in the diff.
+- **The filter form had two fields named `board`**, a hidden one and the visible picker. Caught
+  reading the diff before the browser pass; the hidden one now renders only when the picker does.
+- **M1's React 19 warning paid off.** Every multi-field form here — capture, triage, drawer,
+  project create, the status select — was built controlled or keyed from the start. Nothing lost
+  input on a refusal, and nothing needed fixing afterwards. That warning is the most valuable
+  line the build log has produced so far; keep writing them.
+
+**Deferred**
+
+- Drag and drop between columns. The PRD calls it optional sugar; "Move to…" is keyboard-first
+  and shipped instead.
+- Contact and deal pickers on a task. M6 creates the first of either; the drawer shows the slots
+  and says which milestone fills them.
+- The board picker does not remember the last board between visits. It is in the URL, so a
+  bookmark holds it; a stored preference can wait for a reason to exist.
+
+**Gate: passed.** `npm run check` green (typecheck, 120 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory; no new
+findings. Exercised against `next dev` on the embedded database: the PRD's own capture line
+parsed exactly as §8.2 specifies, `due:fri` and `due:mon` resolved correctly, triage onto a board,
+Move (which omits the current column), drawer edit with notes, every filter and combination,
+complete leaving Command's due list, two-step delete, project create and its count moving to 0/1.
+At 375 px: no horizontal overflow, the nav collapses behind a menu button, and the capture bar
+captured `Order team warmups #basketball due:mon` from the bottom of the screen.

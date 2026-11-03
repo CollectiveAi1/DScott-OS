@@ -18,6 +18,13 @@
   --color-accent-ink: #050a18;
   --color-danger: #e2735f;
 
+  /* One colour per arena. Colour never carries the meaning on its own: an arena label
+     always travels with it (PRD §8.0). */
+  --color-arena-collective: #d4a843;
+  --color-arena-basketball: #4fa3e0;
+  --color-arena-family: #7cc49a;
+  --color-arena-misc: #8b9bae;
+
   --font-sans: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 

@@ -46,33 +46,82 @@ export function Field({
   );
 }
 
+export type SelectOption = string | { value: string; label: string };
+
 export function Select({
   label,
   name,
   options,
   defaultValue,
+  value,
+  onChange,
+  hint,
+  compact = false,
+}: {
+  label: string;
+  name: string;
+  options: readonly SelectOption[];
+  defaultValue?: string;
+  value?: string;
+  onChange?: (next: string) => void;
+  hint?: string;
+  /** Inline in a filter bar: a small label above a short control. */
+  compact?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className={`mb-1.5 block text-muted ${compact ? "text-xs" : "text-sm"}`}>{label}</span>
+      <select
+        name={name}
+        {...(value === undefined
+          ? { defaultValue }
+          : { value, onChange: (event) => onChange?.(event.target.value) })}
+        className={`w-full rounded-[--radius-control] border border-line-strong bg-base text-ink focus:border-accent focus:outline-none ${
+          compact ? "px-2 py-1.5 text-sm" : "px-3 py-2.5"
+        }`}
+      >
+        {options.map((option) => {
+          const item = typeof option === "string" ? { value: option, label: option } : option;
+          return (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          );
+        })}
+      </select>
+      {hint ? <span className="mt-1 block text-xs text-muted">{hint}</span> : null}
+    </label>
+  );
+}
+
+export function Textarea({
+  label,
+  name,
+  rows = 4,
+  value,
+  onChange,
+  defaultValue,
   hint,
 }: {
   label: string;
   name: string;
-  options: readonly string[];
+  rows?: number;
+  value?: string;
+  onChange?: (next: string) => void;
   defaultValue?: string;
   hint?: string;
 }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm text-muted">{label}</span>
-      <select
+      <textarea
         name={name}
-        defaultValue={defaultValue}
-        className="w-full rounded-[--radius-control] border border-line-strong bg-base px-3 py-2.5 text-ink focus:border-accent focus:outline-none"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+        rows={rows}
+        {...(value === undefined
+          ? { defaultValue }
+          : { value, onChange: (event) => onChange?.(event.target.value) })}
+        className="w-full rounded-[--radius-control] border border-line-strong bg-base px-3 py-2.5 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+      />
       {hint ? <span className="mt-1 block text-xs text-muted">{hint}</span> : null}
     </label>
   );

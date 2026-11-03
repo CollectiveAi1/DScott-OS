@@ -2,17 +2,36 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M1 shipped (foundations)
+## Status: M2 shipped (Work + Misc capture)
 
 | Done | Not yet |
 | --- | --- |
-| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Work, Schedule, Learning, Contacts, Pipelines, Approvals, Operator (M2–M9) |
-| Command screen reading live counts from the database | Google Calendar sync for Family (M4) |
-| Settings: delivery mode, time zone, protected time, data export, job history, password | Basketball schedule import, waiting on the official schedule (M5) |
-| Encryption for stored connection keys (AES-256-GCM) | Vercel project + Supabase database (needs a Supabase project) |
-| Job runner, recorded runs, `/api/cron/tick` | The four job bodies — each ships with its own milestone |
-| Schema for all v1 tables, tracked migrations, idempotent seed | Shared rate limit store (current limit is per instance) |
+| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Schedule, Learning, Contacts, Pipelines, Approvals, Operator (M3–M9) |
+| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Google Calendar sync for Family (M4) |
+| Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Basketball schedule import, waiting on the official schedule (M5) |
+| Command: capture, live tiles, due this week, Needs attention | Vercel project + Supabase database (needs a Supabase project) |
+| Settings: delivery mode, time zone, protected time, data export, job history, password | The four job bodies — each ships with its own milestone |
+| Encryption for stored keys, job runner, `/api/cron/tick` | Shared rate limit store (current limit is per instance) |
+| Schema for all v1 tables, tracked migrations, idempotent seed | |
 | Health check at `/api/health`, security headers | |
+
+## Quick capture
+
+One line on Command, or the bar fixed to the bottom of the screen on a phone. Tokens are
+optional, work anywhere in the line, and are stripped from the title:
+
+| Token | Does |
+| --- | --- |
+| `#collective` `#basketball` `#family` `#misc` | sets the arena |
+| `!urgent` `!high` `!normal` `!low` | sets the priority |
+| `due:today` `due:tomorrow` `due:mon`…`due:sun` `due:2026-12-01` | sets the due date |
+
+`Call coach re: film session #basketball !high due:tomorrow` becomes a basketball task, high
+priority, due tomorrow, titled "Call coach re: film session".
+
+Every capture lands in the **Misc inbox** until it is sorted, even a tagged one. Dates resolve in
+the time zone set in Settings. Anything the parser does not recognise is left in the title, so a
+mistyped token is visible rather than silently dropped.
 
 ## Run locally
 

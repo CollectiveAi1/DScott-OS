@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/sidebar";
 import { signOutAction } from "@/lib/auth/actions";
 import { requireOwner } from "@/lib/auth/session";
 import { getSettings } from "@/lib/settings";
+import { QuickCapture } from "@/modules/work/components/quick-capture";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,12 @@ export default async function OsLayout({ children }: { children: React.ReactNode
             </button>
           </form>
         </header>
-        <main className="flex-1 px-6 py-8">{children}</main>
+        {/* The bottom bar is fixed on phones, so the page needs room to scroll past it. */}
+        <main className="flex-1 px-4 py-6 pb-28 sm:px-6 sm:py-8 md:pb-8">{children}</main>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface px-4 py-3 md:hidden">
+        <QuickCapture variant="bar" />
       </div>
     </div>
   );

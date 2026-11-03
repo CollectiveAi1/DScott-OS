@@ -54,3 +54,17 @@ export function minutesOfDay(time: string): number {
   }
   return hour * 60 + minute;
 }
+
+/** ISO weekday (Monday = 1 … Sunday = 7) for a YYYY-MM-DD calendar date. */
+export function weekdayOf(isoDate: string): number {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const utc = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1));
+  // getUTCDay gives Sunday = 0; the OS counts Monday = 1 everywhere else.
+  return utc.getUTCDay() === 0 ? 7 : utc.getUTCDay();
+}
+
+/** The next date falling on `weekday` (Monday = 1), counting today itself as the next one. */
+export function nextWeekday(fromIsoDate: string, weekday: number): string {
+  const ahead = (weekday - weekdayOf(fromIsoDate) + 7) % 7;
+  return addDays(fromIsoDate, ahead);
+}

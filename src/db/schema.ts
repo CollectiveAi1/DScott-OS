@@ -180,6 +180,9 @@ export const boards = pgTable("boards", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
   columns: text("columns").array().notNull(),
+  // Display order. Board order is a property of the data, not of the alphabet: Work opens on
+  // the first one, and that should be the daily board.
+  position: integer("position").notNull().default(0),
   arena: arenaEnum("arena"),
   ...stamps,
 });
@@ -189,6 +192,7 @@ export const tasks = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     title: text("title").notNull(),
+    notes: text("notes"),
     due: date("due"),
     priority: priorityEnum("priority").notNull().default("normal"),
     status: taskStatusEnum("status").notNull().default("open"),
@@ -211,6 +215,10 @@ export const tasks = pgTable(
     index("tasks_deal_idx").on(t.dealId),
     index("tasks_project_idx").on(t.projectId),
     index("tasks_open_due_idx").on(t.status, t.due),
+    // The Misc inbox: untriaged captures, oldest first.
+    index("tasks_misc_idx").on(t.fromMisc, t.createdAt),
+    // The most common pair of Work filters.
+    index("tasks_arena_status_idx").on(t.arena, t.status),
   ],
 );
 

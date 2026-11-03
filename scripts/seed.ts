@@ -4,6 +4,7 @@ import { getHandle } from "../src/db/client";
 // Starter structure from Blueprint v0.1. Safe to run more than once: existing rows are left alone.
 const BOARD_COLUMNS = ["To do", "Doing", "Waiting on others", "Done"];
 
+// Listed in the order they appear in Work. "This week" is the daily board, so it comes first.
 const STARTER_BOARDS = [
   { name: "This week", arena: null },
   { name: "Collective AI", arena: "collective" as const },
@@ -30,7 +31,7 @@ try {
 
   await db
     .insert(boards)
-    .values(STARTER_BOARDS.map((board) => ({ ...board, columns: BOARD_COLUMNS })))
+    .values(STARTER_BOARDS.map((board, position) => ({ ...board, position, columns: BOARD_COLUMNS })))
     .onConflictDoNothing();
 
   await db
