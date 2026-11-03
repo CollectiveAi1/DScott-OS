@@ -2,15 +2,17 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: Phase 0 (scaffold)
+## Status: M1 shipped (foundations)
 
 | Done | Not yet |
 | --- | --- |
-| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Schedule, Work, Learning, Contacts, Pipelines, Approvals, Operator (v1) |
-| Command screen reading live counts from the database | Google Calendar sync for Family (v1) |
-| Settings: delivery mode (sandbox ⇄ live with typed confirm), password change | Basketball schedule import, waiting on the official schedule (v1) |
-| Schema for all v1 tables, tracked migrations, idempotent seed | Vercel project + Supabase database (needs a Supabase project) |
-| Health check at `/api/health`, security headers | Shared rate limit store (current limit is per instance) |
+| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Work, Schedule, Learning, Contacts, Pipelines, Approvals, Operator (M2–M9) |
+| Command screen reading live counts from the database | Google Calendar sync for Family (M4) |
+| Settings: delivery mode, time zone, protected time, data export, job history, password | Basketball schedule import, waiting on the official schedule (M5) |
+| Encryption for stored connection keys (AES-256-GCM) | Vercel project + Supabase database (needs a Supabase project) |
+| Job runner, recorded runs, `/api/cron/tick` | The four job bodies — each ships with its own milestone |
+| Schema for all v1 tables, tracked migrations, idempotent seed | Shared rate limit store (current limit is per instance) |
+| Health check at `/api/health`, security headers | |
 
 ## Run locally
 
@@ -39,7 +41,39 @@ Stop the dev server before running `db:migrate` or `db:seed`: the embedded datab
 
 ## Environment
 
-See `.env.example`. In production `AUTH_SECRET` and `DATABASE_URL` are required; the app refuses to start without them. Locally a random dev secret is written to `.data/dev-auth-secret` (git-ignored). To run `npm start` against the embedded DB, set `ALLOW_EMBEDDED_DB=1`.
+See `.env.example`. In production `AUTH_SECRET` and `DATABASE_URL` are required; the app refuses to start without them. Locally random dev secrets are written to `.data/dev-auth-secret` and `.data/dev-encryption-key` (both git-ignored). To run `npm start` against the embedded DB, set `ALLOW_EMBEDDED_DB=1`.
+
+`ENCRYPTION_KEY` must decode to exactly 32 bytes. `CRON_SECRET` authenticates the scheduler; without it `/api/cron/tick` answers 503 and no job runs.
+
+## Scheduled jobs
+
+One cron tick runs every due job in sequence. `vercel.json` schedules `/api/cron/tick` every
+5 minutes, and Vercel Cron sends `Authorization: Bearer $CRON_SECRET` when the variable is set.
+
+| Job | Cadence | Ships in |
+| --- | --- | --- |
+| `google-sync` | every 10 min | M4 |
+| `approvals-deliver` | every 5 min | M8 |
+| `daily-brief` | daily after 06:30 local | M9 |
+| `learning-review` | Sundays after 18:00 local | M7 |
+
+All four are registered now and report `skipped` until their milestone lands. Every run that
+happens is recorded in `job_runs` and the last 10 per job are shown in Settings. A job that fails
+is recorded and never blocks the others in the same tick.
+
+**Vercel Hobby only allows daily crons.** On Hobby, change the schedule in `vercel.json` to
+`0 11 * * *` and use the "Sync now" buttons that arrive with M4 and M8. Confirm the plan at deploy.
+
+Run one tick by hand:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/tick
+```
+
+## Export
+
+Settings → Export my data downloads every table as one JSON file. The password hash and the
+encrypted connection keys are withheld.
 
 ## Deploy (Vercel + Supabase)
 

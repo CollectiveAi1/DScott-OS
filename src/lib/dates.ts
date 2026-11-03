@@ -25,3 +25,32 @@ export function greetingFor(instant: Date, timeZone: string): string {
   if (hour < 17) return "Good afternoon";
   return "Good evening";
 }
+
+/** Wall-clock time (HH:MM, 24-hour) for an instant, as seen in the given IANA time zone. */
+export function timeInZone(instant: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instant);
+  const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
+  return `${pick("hour")}:${pick("minute")}`;
+}
+
+/** ISO weekday (Monday = 1 … Sunday = 7) for an instant, as seen in the given time zone. */
+export function weekdayInZone(instant: Date, timeZone: string): number {
+  const short = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(instant);
+  const index = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(short);
+  if (index < 0) throw new Error(`Unexpected weekday "${short}" for time zone ${timeZone}.`);
+  return index + 1;
+}
+
+/** "HH:MM" as minutes past local midnight, for comparing a wall-clock time against a rule. */
+export function minutesOfDay(time: string): number {
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour === undefined || minute === undefined || Number.isNaN(hour) || Number.isNaN(minute)) {
+    throw new Error(`Not a HH:MM time: "${time}".`);
+  }
+  return hour * 60 + minute;
+}

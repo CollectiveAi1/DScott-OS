@@ -44,6 +44,7 @@ export const approvalStatusEnum = pgEnum("approval_status", [
   "rejected",
 ]);
 export const deliveryModeEnum = pgEnum("delivery_mode", ["sandbox", "live"]);
+export const jobStatusEnum = pgEnum("job_status", ["ok", "error", "skipped"]);
 
 // Shared columns. Every row records who made it and when.
 const stamps = {
@@ -325,4 +326,24 @@ export const approvals = pgTable(
     ...stamps,
   },
   (t) => [index("approvals_contact_idx").on(t.contactId), index("approvals_status_idx").on(t.status)],
+);
+
+// ---------------------------------------------------------------------------
+// Scheduled jobs
+// ---------------------------------------------------------------------------
+
+export const jobRuns = pgTable(
+  "job_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    job: text("job").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }).notNull(),
+    status: jobStatusEnum("status").notNull(),
+    // One line, written for Devon: what happened or why nothing did.
+    detail: text("detail"),
+    ...stamps,
+  },
+  // The only read shape: the last N runs of one job, newest first.
+  (t) => [index("job_runs_job_started_idx").on(t.job, t.startedAt.desc())],
 );

@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthSecret } from "@/lib/auth/secret";
 import { readToken, SESSION_COOKIE } from "@/lib/auth/token";
 
-const PUBLIC_PATHS = ["/login", "/setup", "/api/health"];
+// /api/cron authenticates itself with CRON_SECRET, so it must be reachable without a session.
+const PUBLIC_PATHS = ["/login", "/setup", "/api/health", "/api/cron"];
 
 // Fast gate: rejects requests without a valid signed cookie. The (os) layout then does the
 // full check against the database (session version), so a revoked cookie still fails there.
