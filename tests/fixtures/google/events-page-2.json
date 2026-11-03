@@ -1,0 +1,31 @@
+{
+  "kind": "calendar#events",
+  "summary": "Family",
+  "items": [
+    {
+      "id": "recur_20261110T160000Z",
+      "status": "confirmed",
+      "summary": "Piano lesson",
+      "recurringEventId": "recur",
+      "htmlLink": "https://www.google.com/calendar/event?eid=recur_1",
+      "start": { "dateTime": "2026-11-10T11:00:00-05:00" },
+      "end": { "dateTime": "2026-11-10T11:45:00-05:00" }
+    },
+    {
+      "id": "recur_20261117T160000Z",
+      "status": "confirmed",
+      "summary": "Piano lesson",
+      "recurringEventId": "recur",
+      "htmlLink": "https://www.google.com/calendar/event?eid=recur_2",
+      "start": { "dateTime": "2026-11-17T11:00:00-05:00" },
+      "end": { "dateTime": "2026-11-17T11:45:00-05:00" }
+    },
+    {
+      "id": "malformed-no-times",
+      "status": "confirmed",
+      "summary": "Something Google sent oddly",
+      "start": {},
+      "end": {}
+    }
+  ]
+}

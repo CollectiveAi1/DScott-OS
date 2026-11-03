@@ -93,7 +93,12 @@ Rule 6 compares a timed event against each local day it touches, because a block
 rule (`days`, `start`, `end`) rather than a row with instants. An all-day event does not trip
 protected time — it is not occupying the hours.
 
-### A flagged consequence of rule 5
+### A flagged consequence of rule 5 — **resolved at the M4 gate, see SPEC-004 §2**
+
+> **Resolution (2026-11-02).** Devon chose to narrow rule 5: when one side is all-day, it only
+> conflicts if it is Travel. The rule table above describes what M3 shipped; the amended rule is
+> in `conflicts.ts` and SPEC-004 §2. Rules 1–4 and 6 are unchanged.
+
 
 Taken literally, rule 5 means **any** all-day event conflicts with **every** timed event that
 overlaps it, not just travel. An all-day "Maya's birthday" would therefore conflict with each of

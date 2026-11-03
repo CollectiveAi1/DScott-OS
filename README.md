@@ -2,16 +2,17 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M3 shipped (Schedule)
+## Status: M4 shipped (Family sync)
 
 | Done | Not yet |
 | --- | --- |
 | Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Learning, Contacts, Pipelines, Approvals, Operator (M6–M9) |
-| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Google Calendar sync for Family (M4) |
-| Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Basketball schedule import, waiting on the official schedule (M5) |
-| Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Vercel project + Supabase database (needs a Supabase project) |
-| Command: capture, live tiles, due this week, Conflicts, Needs attention | The four job bodies — each ships with its own milestone |
-| Settings: delivery mode, time zone, protected time, data export, job history, password | Shared rate limit store (current limit is per instance) |
+| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Basketball schedule import, waiting on the official schedule (M5) |
+| Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Vercel project + Supabase database (needs a Supabase project) |
+| Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Approvals delivery, the daily brief and the weekly review (M7–M9) |
+| Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | Shared rate limit store (current limit is per instance) |
+| Command: capture, live tiles, due this week, Conflicts, Needs attention | |
+| Settings: delivery mode, time zone, protected time, connections, export, job history | |
 | Encryption for stored keys, job runner, `/api/cron/tick` | |
 | Schema for all v1 tables, tracked migrations, idempotent seed | |
 
@@ -30,11 +31,13 @@ is a URL, so any of them can be bookmarked or shared.
   00:00, matching Google's `start.date`/`end.date`.
 - Travel is all-day and multi-day, departure through return.
 
-**Conflicts.** Two events clash when they overlap and at least one is occupying real hours. Two
-all-day events never clash, and neither do two Basketball events — a practice inside a team event
-is normal. A timed event running into protected time is flagged too. Clashes appear on both
-events and on Command for the next 14 days; **Acknowledge** hides a pair, and moving either event
-brings it back.
+**Conflicts.** Two timed events clash when they overlap. An all-day event only clashes when it
+is **Travel** — you are on a plane; you are not at a birthday all day — so a synced calendar full
+of holidays and birthdays stays quiet. Two Basketball events never clash either: a practice
+inside a team event is normal. A timed event running into protected time is flagged too.
+
+Clashes appear on both events and on Command for the next 14 days. **Acknowledge** hides a pair,
+and moving either event brings it back.
 
 Events from Google or an import are read-only apart from notes, and say where they came from.
 
@@ -117,10 +120,33 @@ curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/tick
 Settings → Export my data downloads every table as one JSON file. The password hash and the
 encrypted connection keys are withheld.
 
+## Google Calendar (Family arena)
+
+Read-only. The OS never writes to Google in v1.
+
+1. In `console.cloud.google.com`, enable the Google Calendar API and create an **OAuth client
+   ID** of type *Web application*.
+2. Set its authorised redirect URI to exactly `${APP_URL}/api/google/callback` — Settings →
+   Connections prints the exact string to paste.
+3. Put the client id and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, set `APP_URL`,
+   and restart.
+4. **Publish the app.** A client left in *Testing* issues refresh tokens that expire after seven
+   days, so the connection breaks every week. A single-user, unverified published app is fine
+   for your own account.
+5. Settings → Connections → Connect Google Calendar, then tick the calendars that feed Family.
+
+Syncs every ten minutes (daily on Vercel Hobby — use **Sync now**), over a window of 7 days back
+to 120 days ahead. Recurring events arrive as individual instances. Synced events are read-only
+apart from their notes, which no sync will ever overwrite; everything else lives in Google and
+each event links back to it.
+
+If Google revokes access — or the Testing-mode expiry hits — the connection is marked broken,
+syncing stops, and both Settings and Command say to reconnect.
+
 ## Deploy (Vercel + Supabase)
 
 1. Create a Supabase project. Copy the pooled connection string (transaction pooler, port 6543) into `DATABASE_URL`.
-2. Import this repo in Vercel. Set `AUTH_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET` (`openssl rand -base64 32` each), `DATABASE_URL`, `APP_URL`, `OS_TIMEZONE`.
+2. Import this repo in Vercel. Set `AUTH_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET` (`openssl rand -base64 32` each), `DATABASE_URL`, `APP_URL`, `OS_TIMEZONE`, and the two `GOOGLE_*` variables.
 3. Run `DATABASE_URL=... npm run db:migrate && npm run db:seed` once from your machine.
 4. Open the deployed URL. It goes to `/setup`.
 

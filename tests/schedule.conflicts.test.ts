@@ -106,9 +106,16 @@ describe("eventsConflict · the rule table in SPEC-003 §3", () => {
     expect(eventsConflict(travel, timed("collective", "2026-11-05", "09:00", "10:00"))).toBe(true);
   });
 
-  it("rule 5 · an overlap with one timed side conflicts", () => {
-    // Flagged in SPEC-003 §3: this currently catches any all-day event, not only travel.
-    expect(eventsConflict(allDay("family", DAY, "2026-11-05"), timed("collective", DAY, "10:00", "11:00"))).toBe(true);
+  it("rule 5 · an all-day event that is not travel does not block a timed event", () => {
+    // Decided at the M4 gate (SPEC-004 §2): a birthday is not a reason to flag every meeting.
+    expect(eventsConflict(allDay("family", DAY, "2026-11-05"), timed("collective", DAY, "10:00", "11:00"))).toBe(false);
+    expect(eventsConflict(allDay("collective", DAY, "2026-11-05", "deadline"), timed("family", DAY, "18:00", "20:00"))).toBe(
+      false,
+    );
+  });
+
+  it("rule 5 · two timed events that overlap still conflict", () => {
+    expect(eventsConflict(timed("collective", DAY, "10:00", "12:00"), timed("family", DAY, "11:00", "13:00"))).toBe(true);
   });
 
   it("the PRD's own example · a Collective meeting against a game", () => {

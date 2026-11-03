@@ -1,0 +1,28 @@
+{
+  "kind": "calendar#events",
+  "summary": "Family",
+  "items": [
+    {
+      "id": "timed-dinner",
+      "status": "confirmed",
+      "summary": "Dinner with the Hales (moved)",
+      "description": "Changed in Google after Devon wrote his own notes.",
+      "location": "Chapman's, Columbus",
+      "htmlLink": "https://www.google.com/calendar/event?eid=timed-dinner",
+      "start": { "dateTime": "2026-11-04T19:00:00-05:00" },
+      "end": { "dateTime": "2026-11-04T21:00:00-05:00" }
+    },
+    {
+      "id": "allday-birthday",
+      "status": "cancelled"
+    },
+    {
+      "id": "recur_20261110T160000Z",
+      "status": "confirmed",
+      "summary": "Piano lesson",
+      "recurringEventId": "recur",
+      "start": { "dateTime": "2026-11-10T11:00:00-05:00" },
+      "end": { "dateTime": "2026-11-10T11:45:00-05:00" }
+    }
+  ]
+}

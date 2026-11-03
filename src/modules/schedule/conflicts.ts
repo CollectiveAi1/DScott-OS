@@ -22,12 +22,12 @@ export function overlaps(a: { startsAt: Date; endsAt: Date }, b: { startsAt: Dat
 }
 
 /**
- * Whether two events collide, per SPEC-003 §3.
+ * Whether two events collide, per SPEC-003 §3 as amended at the M4 gate (SPEC-004 §2).
  *
- * NOTE on rule 5: taken literally this makes any all-day event conflict with every timed event
- * it covers, not only travel. That is what PRD §8.3 says, and it is what ships. M4 syncs a
- * Family calendar full of all-day birthdays and holidays, so the question of narrowing this to
- * travel goes to Devon at that gate — change the condition below and nothing else moves.
+ * The amendment: when one side is all-day, it only collides if it is Travel. Devon is on a
+ * plane; he is not at a birthday all day. Read literally, the original rule made every all-day
+ * entry in the synced Family calendar clash with every meeting that day, and a conflict has to
+ * mean something or the panel stops being read.
  */
 export function eventsConflict(a: ConflictEvent, b: ConflictEvent): boolean {
   if (a.id === b.id) return false;
@@ -38,7 +38,11 @@ export function eventsConflict(a: ConflictEvent, b: ConflictEvent): boolean {
   // Rule 3: a practice inside a team event is normal. Basketball only — two Collective
   // meetings double-booked is exactly what Devon wants caught.
   if (a.arena === "basketball" && b.arena === "basketball") return false;
-  // Rules 4 and 5: an overlap where at least one side is occupying real hours.
+  // Rules 4 and 5: an all-day event blocks the day only when it is travel. Everything else
+  // all-day — a birthday, a holiday, a deadline — sits behind the day without occupying it.
+  const allDaySide = a.allDay ? a : b.allDay ? b : null;
+  if (allDaySide) return allDaySide.kind === "travel";
+  // Both are timed and they overlap.
   return true;
 }
 

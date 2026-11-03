@@ -218,3 +218,79 @@ it back with the new times. Travel auto-selected all-day and stored Nov 6 → No
 Month rendered 42 cells opening on 2026-10-26. Arena-driven kinds switched with the arena. A
 refused submit held every field. Capture → Make event → prefilled form → capture completed. At
 375 px: Agenda replaces Week, and the wide grids scroll inside themselves while the page does not.
+
+## 2026-11-03 · M4 · Family sync (Google Calendar, read-only)
+
+Branch `m4-google-sync`, off `main`. Spec `docs/specs/SPEC-004-google-sync.md`, plan
+`docs/plans/PLAN-004-google-sync.md`.
+
+**Shipped**
+
+- `src/modules/google/`: signed OAuth state, the pure event mapping, the HTTP client, token
+  storage and refresh, the sync algorithm, the service, actions and the Settings panel.
+- `/api/google/start` and `/api/google/callback`.
+- The real `google-sync` job body, replacing M1's stub. "Sync now" in Settings.
+- Broken connections surface in Settings and in Command → Needs attention.
+- Migration `0004_google`: `calendar_events.external_url`; `CalendarSource` widened to carry
+  `summary`, `lastSyncedAt` and `lastError`.
+- **The conflict rule, narrowed** — the question M3 flagged, now answered.
+
+**Decided at this gate**
+
+- **All-day events only conflict when they are Travel.** Devon's call. The rule as PRD §8.3
+  states it would have made every synced birthday and holiday clash with that day's meetings,
+  and a conflict has to mean something or the panel stops being read. The accepted cost: an
+  all-day Collective deadline no longer flags against meetings, which is defensible — a deadline
+  does not occupy hours. One condition in `eventsConflict`; SPEC-003 §3 annotated as resolved.
+- **The sync takes its API as an argument.** Every one of the 18 sync tests drives a fake built
+  from recorded fixtures; nothing in the test suite knows Google's hostname. This is also what
+  made the whole module provable before any credentials existed.
+- **A partial read never deletes.** Deletion only runs after every page of a calendar has been
+  read. Deleting on incomplete data would silently empty Devon's calendar, which is the worst
+  thing this module could do, and there is a test for each half of it.
+- **`description` is never imported.** `notes` is the one field Devon can edit on a synced row,
+  and a sync that rewrote it every ten minutes would make it useless. The description stays one
+  click away through `externalUrl`.
+- **`invalid_grant` is terminal; everything else is transient.** A revoked grant marks the
+  connection broken and stops the job. Any other failure is recorded on the source and retried
+  next tick.
+- **Polling, not webhooks, and no `syncToken`.** Push needs channel renewal and a recovery path;
+  an incremental token is a cache that can go stale invisibly. Re-reading a 127-day window is
+  idempotent by construction and cheap.
+- **Unticking a calendar takes its events with it**, as does disconnecting. A calendar that is
+  no longer a source should not leave rows behind.
+
+**Found while building**
+
+- **A broken connection could only be reconnected, never removed.** That leaves the synced
+  events with no way to clear them short of reconnecting to an account Devon may have cut off on
+  purpose. Both buttons are there now.
+- **The M1 cron test was still asserting a stub's text.** It now asserts the real reason the job
+  skipped ("No calendars are feeding Family yet."), which is a better message than the milestone
+  tag it replaced.
+- The OAuth pieces cannot be exercised in a browser without a real Google account, so the parts
+  that carry the security — the consent URL and the callback's state handling — got their own
+  tests instead. Twelve of them.
+
+**Deferred**
+
+- Write-back to Google. v2, through Approvals.
+- Calendars feeding an arena other than Family. The source record already carries an arena so
+  v2 can widen it without a migration; v1 only ever writes `family`.
+
+**Still needs Devon**
+
+Nothing in the code is waiting, but the connection cannot be made until there is a Google Cloud
+OAuth client: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and a redirect URI of
+`${APP_URL}/api/google/callback`. **Publish the app** — a client left in Testing issues refresh
+tokens that expire after seven days. The README has the steps, and Settings → Connections prints
+the exact redirect URI to paste.
+
+**Gate: passed.** `npm run check` green (typecheck, 242 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory. Exercised
+against `next dev` with no real Google account: the panel's not-configured state prints the exact
+variables and redirect URI; the not-connected state offers Connect; a broken connection shows
+Reconnect in Settings and in Command → Needs attention, and the cron tick still returned 200 and
+still ran the jobs after it; Disconnect armed, confirmed, cleared the connection and the warning.
+An all-day family birthday placed against the existing meeting-and-game clash added no new
+conflicts, which is the narrowed rule doing its job.

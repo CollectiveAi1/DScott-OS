@@ -1,0 +1,38 @@
+{
+  "kind": "calendar#events",
+  "summary": "Family",
+  "nextPageToken": "PAGE2",
+  "items": [
+    {
+      "id": "timed-dinner",
+      "status": "confirmed",
+      "summary": "Dinner with the Hales",
+      "description": "Bring the dessert. Google's own notes field.",
+      "location": "412 Oak St, Columbus, OH",
+      "htmlLink": "https://www.google.com/calendar/event?eid=timed-dinner",
+      "start": { "dateTime": "2026-11-04T18:00:00-05:00", "timeZone": "America/New_York" },
+      "end": { "dateTime": "2026-11-04T20:00:00-05:00", "timeZone": "America/New_York" }
+    },
+    {
+      "id": "allday-birthday",
+      "status": "confirmed",
+      "summary": "Maya's birthday",
+      "htmlLink": "https://www.google.com/calendar/event?eid=allday-birthday",
+      "start": { "date": "2026-11-05" },
+      "end": { "date": "2026-11-06" }
+    },
+    {
+      "id": "allday-spring-break",
+      "status": "confirmed",
+      "summary": "Spring break",
+      "start": { "date": "2026-11-09" },
+      "end": { "date": "2026-11-14" }
+    },
+    {
+      "id": "no-summary",
+      "status": "confirmed",
+      "start": { "dateTime": "2026-11-06T09:00:00-05:00" },
+      "end": { "dateTime": "2026-11-06T09:30:00-05:00" }
+    }
+  ]
+}

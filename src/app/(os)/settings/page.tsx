@@ -6,6 +6,12 @@ import { JOBS } from "@/modules/jobs/registry";
 import { recentRunsByJob } from "@/modules/jobs/queries";
 import { describeSchedule } from "@/modules/jobs/schedule";
 import type { JobRun } from "@/modules/jobs/service";
+import { callbackUrl, isConfigured } from "@/modules/google/api";
+import { GoogleConnection, type CalendarOption } from "@/modules/google/components/connection";
+import { availableCalendars } from "@/modules/google/service";
+import { readConnection } from "@/modules/google/tokens";
+import { count, eq } from "drizzle-orm";
+import { calendarEvents } from "@/db/schema";
 import { DeliveryModeForm, PasswordForm, ProtectedTimeForm, TimezoneForm } from "./forms";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -57,9 +63,44 @@ function RunRow({ run, timeZone }: { run: JobRun; timeZone: string }) {
   );
 }
 
-export default async function SettingsPage() {
+const CONNECT_NOTICE: Record<string, string> = {
+  connected: "Connected to Google. Pick the calendars that feed Family.",
+  denied: "Google access was declined, so nothing changed.",
+  bad_state: "That sign-in link had expired. Start again.",
+  no_code: "Google did not send an authorisation code. Try again.",
+  failed: "Connecting to Google failed. Try again.",
+  not_configured: "Google is not configured on this deployment.",
+};
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const current = await getSettings();
   const runsByJob = await recentRunsByJob(getDb());
+
+  const params = await searchParams;
+  const outcome = Array.isArray(params.google) ? params.google[0] : params.google;
+  const notice = outcome ? CONNECT_NOTICE[outcome] : undefined;
+
+  // The connection's own state decides how much of the panel there is to draw.
+  const connection = isConfigured() ? await readConnection() : ({ status: "none" } as const);
+  const panelStatus = !isConfigured() ? "not_configured" : connection.status;
+
+  let calendars: CalendarOption[] = [];
+  if (panelStatus === "ok") {
+    const listed = await availableCalendars();
+    if (listed.ok) {
+      const picked = new Set(current.calendarSources.map((source) => source.calendarId));
+      calendars = listed.data.map((calendar) => ({ ...calendar, picked: picked.has(calendar.id) }));
+    }
+  }
+
+  const [syncedCount] = await getDb()
+    .select({ n: count() })
+    .from(calendarEvents)
+    .where(eq(calendarEvents.source, "google"));
 
   return (
     <div className="mx-auto max-w-2xl space-y-10">
@@ -91,6 +132,29 @@ export default async function SettingsPage() {
         description={`Up to ${MAX_PROTECTED_BLOCKS} blocks the Operator will never book over.`}
       >
         <ProtectedTimeForm blocks={current.protectedTime} />
+      </Panel>
+
+      <Panel
+        id="connections-heading"
+        heading="Connections"
+        description="Google Calendar feeds the Family arena. Nothing is ever written back."
+      >
+        <GoogleConnection
+          status={panelStatus}
+          reason={connection.status === "broken" ? connection.reason : undefined}
+          email={connection.status === "ok" ? connection.email : undefined}
+          calendars={calendars}
+          sources={current.calendarSources.map((source) => ({
+            calendarId: source.calendarId,
+            summary: source.summary,
+            lastSyncedAt: source.lastSyncedAt,
+            lastError: source.lastError,
+          }))}
+          eventCount={syncedCount?.n ?? 0}
+          timeZone={current.timezone}
+          callbackUrl={callbackUrl()}
+          notice={notice}
+        />
       </Panel>
 
       <Panel

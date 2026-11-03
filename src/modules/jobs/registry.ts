@@ -24,7 +24,19 @@ export const JOBS: JobDefinition[] = [
     name: "google-sync",
     schedule: { kind: "interval", everyMinutes: 10 },
     purpose: "Pulls the Family calendar from Google.",
-    handler: notYetBuilt("M4"),
+    handler: async () => {
+      const { syncAllCalendars } = await import("@/modules/google/service");
+      const result = await syncAllCalendars();
+      if (!result.ok) {
+        // Not connected or no calendars picked is a state, not a failure. A revoked grant is
+        // already recorded on the connection, and the job stops rather than retrying.
+        return { status: "skipped", detail: result.error.message };
+      }
+      const { calendars, written, removed, errors } = result.data;
+      const detail = `${calendars} calendar(s): ${written} written, ${removed} removed`;
+      if (errors.length > 0) throw new Error(`${detail}. ${errors.join("; ")}`);
+      return { status: "ok", detail };
+    },
   },
   {
     name: "approvals-deliver",

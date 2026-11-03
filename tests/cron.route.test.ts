@@ -61,8 +61,15 @@ describe("GET /api/cron/tick", () => {
     const names = [...body.ran.map((entry) => entry.job), ...body.skipped.map((entry) => entry.job)];
     expect(names).toEqual(["google-sync", "approvals-deliver", "daily-brief", "learning-review"]);
 
+    // google-sync is real as of M4: with no calendars picked it skips and says why, rather
+    // than reporting a milestone that has already shipped.
     const sync = body.ran.find((entry) => entry.job === "google-sync");
-    expect(sync).toEqual({ job: "google-sync", status: "skipped", detail: "Ships in M4." });
+    expect(sync).toMatchObject({ job: "google-sync", status: "skipped" });
+    expect(sync?.detail).toBe("No calendars are feeding Family yet.");
+
+    // The jobs that have not shipped yet still say so.
+    const approvals = body.ran.find((entry) => entry.job === "approvals-deliver");
+    expect(approvals).toEqual({ job: "approvals-deliver", status: "skipped", detail: "Ships in M8." });
   });
 
   it("reports the interval jobs as not due on an immediate second tick", async () => {

@@ -76,7 +76,7 @@ export const settings = pgTable("settings", {
   timezone: text("timezone").notNull().default("America/New_York"),
   // [{ label, days: [1-7, Monday = 1], start: "HH:MM", end: "HH:MM" }]
   protectedTime: jsonb("protected_time").$type<ProtectedBlock[]>().notNull().default([]),
-  // [{ provider: "google", calendarId, arena }]
+  // One entry per calendar feeding an arena; see CalendarSource.
   calendarSources: jsonb("calendar_sources").$type<CalendarSource[]>().notNull().default([]),
   brandKit: jsonb("brand_kit").$type<Record<string, string>>().notNull().default({}),
   // { chat: ["claude", ...], draft: [...], summarise: [...], numbers: [...] }
@@ -87,7 +87,19 @@ export const settings = pgTable("settings", {
 });
 
 export type ProtectedBlock = { label: string; days: number[]; start: string; end: string };
-export type CalendarSource = { provider: "google"; calendarId: string; arena: "family" };
+/**
+ * A calendar being read into an arena. `arena` is stored per source so v2 can widen this past
+ * Family without a migration; v1 only ever writes "family".
+ */
+export type CalendarSource = {
+  provider: "google";
+  calendarId: string;
+  /** The calendar's own name, so Settings can show it without another API call. */
+  summary: string;
+  arena: "family";
+  lastSyncedAt?: string;
+  lastError?: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // People
@@ -240,6 +252,8 @@ export const calendarEvents = pgTable(
     source: calendarSourceEnum("source").notNull().default("manual"),
     // Stable id from the import or the Google event, so re-syncs update instead of duplicating.
     externalId: text("external_id"),
+    // Link back to the event where it is owned, for anything this OS does not mirror.
+    externalUrl: text("external_url"),
     arena: arenaEnum("arena").notNull(),
     ...origin,
     ...stamps,

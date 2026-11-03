@@ -4,6 +4,7 @@ import { getDb } from "@/db/client";
 import { approvals, calendarEvents, tasks, timeline } from "@/db/schema";
 import { staleCaptures } from "@/modules/work/queries";
 import { conflictsInRange, type Conflict } from "@/modules/schedule/queries";
+import { readConnection } from "@/modules/google/tokens";
 import { startOfDayInstant } from "./zoned";
 import { addDays, dateInZone } from "./dates";
 import { getSettings } from "./settings";
@@ -31,7 +32,7 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const openWithDue = and(eq(tasks.status, "open"), isNotNull(tasks.due));
 
-  const [waiting, dueWeek, overdueRows, moved, nextEvent, dueList, stale, conflicts] = await Promise.all([
+  const [waiting, dueWeek, overdueRows, moved, nextEvent, dueList, stale, conflicts, googleConnection] = await Promise.all([
     db.select({ n: count() }).from(approvals).where(eq(approvals.status, "waiting")),
     db.select({ n: count() }).from(tasks).where(and(openWithDue, gte(tasks.due, today), lte(tasks.due, weekEnd))),
     db.select({ n: count() }).from(tasks).where(and(openWithDue, lt(tasks.due, today))),
@@ -55,6 +56,7 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
       .limit(12),
     staleCaptures(db, now),
     conflictsForCommand(timeZone, today, now),
+    readConnection(),
   ]);
 
   return {
@@ -65,13 +67,28 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
     dealsMoved7d: moved[0]?.n ?? 0,
     nextGameOrTravel: nextEvent[0] ?? null,
     dueList,
-    needsAttention: stale.map((task) => ({
-      id: task.id,
-      kind: "Untriaged capture",
-      title: task.title,
-      detail: `Captured ${dateInZone(task.createdAt, timeZone)} and still in the Misc inbox.`,
-      href: "/work",
-    })),
+    needsAttention: [
+      // A revoked Google grant stops the sync silently otherwise: the Family calendar just
+      // quietly stops updating, which is worse than an error.
+      ...(googleConnection.status === "broken"
+        ? [
+            {
+              id: "google-connection",
+              kind: "Google Calendar",
+              title: "Reconnect Google Calendar",
+              detail: googleConnection.reason,
+              href: "/settings",
+            },
+          ]
+        : []),
+      ...stale.map((task) => ({
+        id: task.id,
+        kind: "Untriaged capture",
+        title: task.title,
+        detail: `Captured ${dateInZone(task.createdAt, timeZone)} and still in the Misc inbox.`,
+        href: "/work",
+      })),
+    ],
     // Acknowledged pairs are hidden: Devon has already decided that one is fine.
     conflicts: conflicts.filter((conflict) => conflict.kind === "protected" || !conflict.acknowledged),
   };

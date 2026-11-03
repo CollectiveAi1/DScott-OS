@@ -26,7 +26,20 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-3xl font-semibold">Event</h1>
+      <h1 className="mb-2 text-3xl font-semibold">Event</h1>
+      {event.externalUrl ? (
+        <p className="mb-6 text-sm text-muted">
+          <a
+            href={event.externalUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline hover:text-ink"
+          >
+            Open where it is owned
+          </a>{" "}
+          to change anything but the notes.
+        </p>
+      ) : null}
       <EventForm
         values={{
           id: event.id,
