@@ -2,17 +2,18 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M6 shipped (Contacts + Pipelines)
+## Status: M7 shipped (Learning)
 
 | Done | Not yet |
 | --- | --- |
 | Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Learning, Contacts, Pipelines, Approvals, Operator (M6–M9) |
-| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Learning (M7) |
+| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Approvals delivery (M8) |
 | Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Vercel project + Supabase database (needs a Supabase project) |
 | Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Approvals delivery, the daily brief and the weekly review (M7–M9) |
 | Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | Shared rate limit store (current limit is per instance) |
 | Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | Approvals delivery (M8) and the Operator (M9) |
-| Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | The official team schedule itself, which has not arrived |
+| Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | The Operator (M9) and the final Command + deploy (M10) |
+| Learning: skills, practice log, and a weekly review written every Sunday | The official team schedule itself, which has not arrived |
 | Command: capture, live tiles, due this week, Conflicts, Needs attention | |
 | Settings: delivery mode, time zone, protected time, connections, export, job history | |
 | Encryption for stored keys, job runner, `/api/cron/tick` | |
@@ -185,6 +186,33 @@ Settings → Pipelines. The seeded stages are drafts. Renaming a stage **moves t
 in it** and keeps its billing flag; removing a stage that still has deals is refused and says how
 many.
 
+## Learning
+
+`/learning` tracks skills — where you are, where you want to be, and the only number that tells
+the truth: **minutes actually logged**, over 7 days and 30.
+
+Practice is one button. **+15m, +30m, +60m** against today, with a fuller form for another day or
+an odd amount. Logging twice in a day adds; it never replaces.
+
+Each skill holds learning items — a course, a book, a video or a project — with a status, a due
+date and a link.
+
+### The weekly review
+
+Written every Sunday evening by the `learning-review` job, and on demand with **Write it now**.
+It covers minutes per skill this week against last, anything **stalled** (an active item whose
+skill has had no practice for two weeks), anything **past due**, and exactly one next step per
+skill. One step, not a list — the rest of the OS is already where backlogs live.
+
+The review is computed as data first, then written two ways. Without a model key a deterministic
+template renders it, so the same week always reads the same. With `ANTHROPIC_API_KEY` set,
+`SUMMARY_MODEL` rewrites it more readably — but every number is computed and handed over already
+resolved, and the model is told not to calculate anything. If the call fails, the offline text is
+what gets stored. The review says which wrote it.
+
+Each review is stored as the text it was that Sunday, not recomputed on read: a record, not a
+view.
+
 ## Importing the team schedule
 
 `/schedule/import`. Basketball only, and nothing is written until you have seen a preview and
@@ -229,10 +257,12 @@ later import.
 - Nothing reaches another person without an approval. The `approvals` table carries an idempotency key so a retried send cannot fire twice. Sandbox mode records approvals and delivers nothing.
 - Look: theme tokens live in `src/app/globals.css` (`@theme`). Current skin is the Collective AI parent system: deep navy, amber gold, Space Grotesk, JetBrains Mono. Swap the tokens to re-skin.
 
-## A correction to the PRD
+## Corrections to the PRD
 
-`docs/PRD.md` §6 names the models `claude-sonnet-5-5` and `claude-haiku-5-5`. Those ids do not
-exist. The code uses `claude-sonnet-5`, overridable with `OPERATOR_MODEL`.
+`docs/PRD.md` §6 names the models `claude-sonnet-5-5` and `claude-haiku-5-5`. **Neither id
+exists.** The code uses `claude-sonnet-5` (overridable with `OPERATOR_MODEL`) and
+`claude-haiku-4-5-20251001` (overridable with `SUMMARY_MODEL`). Worth fixing in the PRD before
+M9 builds the Operator on those lines.
 
 ## Known advisories
 

@@ -100,6 +100,23 @@ export default async function CommandPage() {
         )}
       </section>
 
+      {snapshot.learningReview ? (
+        <section aria-labelledby="review-heading" className="mt-10">
+          <h2 id="review-heading" className="mb-3 flex flex-wrap items-baseline gap-3 text-lg font-semibold">
+            Weekly review
+            <span className="font-mono text-xs text-muted">{snapshot.learningReview.day}</span>
+          </h2>
+          <div className="rounded-[--radius-panel] border border-line bg-surface p-4">
+            <p className="whitespace-pre-wrap text-sm text-ink">
+              {snapshot.learningReview.body.split("\n").slice(0, 4).join("\n")}
+            </p>
+            <Link href="/learning" className="mt-3 inline-block text-sm text-muted underline hover:text-ink">
+              Read it in Learning
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       {snapshot.conflicts.length > 0 ? (
         <section aria-labelledby="conflicts-heading" className="mt-10">
           <h2 id="conflicts-heading" className="mb-3 text-lg font-semibold">

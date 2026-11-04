@@ -45,6 +45,9 @@ export const approvalStatusEnum = pgEnum("approval_status", [
 ]);
 export const deliveryModeEnum = pgEnum("delivery_mode", ["sandbox", "live"]);
 export const jobStatusEnum = pgEnum("job_status", ["ok", "error", "skipped"]);
+export const digestKindEnum = pgEnum("digest_kind", ["daily_brief", "learning_review"]);
+// Who wrote the prose: a template that always works, or the model when a key exists.
+export const digestSourceEnum = pgEnum("digest_source", ["offline", "model"]);
 
 // Shared columns. Every row records who made it and when.
 const stamps = {
@@ -410,4 +413,27 @@ export const jobRuns = pgTable(
   },
   // The only read shape: the last N runs of one job, newest first.
   (t) => [index("job_runs_job_started_idx").on(t.job, t.startedAt.desc())],
+);
+
+/**
+ * Something the OS wrote for Devon to read later: the weekly learning review (M7), the morning
+ * brief (M9). One row per kind per day, so a retry or a second tick updates rather than piles up.
+ *
+ * `body` is the text as it read that day — a record, not a view, so re-reading an old review
+ * never quietly rewrites history. `data` is the structure it was rendered from, kept so a later
+ * milestone can chart or re-render without re-deriving anything.
+ */
+export const digests = pgTable(
+  "digests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: digestKindEnum("kind").notNull(),
+    day: date("day").notNull(),
+    body: text("body").notNull(),
+    source: digestSourceEnum("source").notNull().default("offline"),
+    data: jsonb("data").$type<Record<string, unknown>>(),
+    ...origin,
+    ...stamps,
+  },
+  (t) => [uniqueIndex("digests_kind_day_idx").on(t.kind, t.day), index("digests_kind_idx").on(t.kind, t.day.desc())],
 );

@@ -21,7 +21,7 @@ const MENU: { group: string; screens: Screen[] }[] = [
   {
     group: "Collective",
     screens: [
-      { label: "Learning", ships: "v1" },
+      { label: "Learning", href: "/learning" },
       { label: "Pipelines", href: "/pipelines" },
     ],
   },

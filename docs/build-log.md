@@ -440,3 +440,69 @@ back to Deposit produced exactly one Ahmad task and three recorded stage moves; 
 moved · 7 days" read 3; the board showed the red edge and "No next step"; removing a populated
 stage was refused with "1 deal still stands in \"Deposit\""; renaming it moved the deal with it.
 No horizontal overflow at 375 px on either screen.
+
+## 2026-11-04 · M7 · Learning
+
+Branch `m7-learning`, off `main`. Spec `docs/specs/SPEC-007-learning.md`, plan
+`docs/plans/PLAN-007-learning.md`.
+
+**Shipped**
+
+- `src/modules/learning/`: the review as pure data, a deterministic offline template, the model
+  rewrite over an injected client, queries, service, actions and the screens.
+- `/learning` with the review on top and the skills list; the skill page with quick-log, items
+  and the practice log.
+- The real `learning-review` job body, replacing M1's stub, plus **Write it now**.
+- Migration `0007_learning`: `digests`, unique on `(kind, day)`, with `source` and `data`.
+- The latest review on Command.
+
+**Decided at this gate**
+
+- **The review is data before it is prose.** `buildReview` takes rows and a date and returns a
+  structure; the template, the model prompt and the screen all read that one thing. There is one
+  place a number can be wrong.
+- **The numbers are never the model's.** Every figure is computed and interpolated; the model is
+  handed them already resolved and told plainly not to calculate. A weekly review that quietly
+  reported the wrong total would be worse than a plain one — and the plain one always exists.
+- **Offline is the floor, not the fallback.** No key, an API failure, or a reply too short to be
+  worth keeping all store the deterministic text, and the digest records which wrote it.
+- **One next step per skill**, down a six-rung ladder. A review handing back six things is a
+  backlog, and the rest of the OS is already that.
+- **Practice is additive.** Two sessions on one day are two rows; the day's total is their sum.
+  An overwrite would quietly lose the morning's work.
+- **A digest is a record, not a view.** The text is stored as it read that Sunday. Recomputing it
+  later would rewrite history — the same reasoning that keeps past events out of M5's import
+  removals.
+- **`digests.data` alongside the body**, so a later milestone can chart or re-render a review
+  without re-deriving it. `daily_brief` is in the enum already, so M9 adds no migration.
+
+**Found while building**
+
+- **A second wrong model id in the PRD.** M5 found `claude-sonnet-5-5` does not exist; neither
+  does `claude-haiku-5-5`, which §6 names for `SUMMARY_MODEL`. The code uses
+  `claude-haiku-4-5-20251001`. Both corrections are in the README. **The PRD itself is still
+  wrong — fix it before M9 builds the Operator on those lines.**
+- **The job handler needed its own test.** Everything under it was covered, but the registered
+  definition — the wiring that actually runs on a Sunday — was not. It now goes through `runJob`
+  with a Sunday-evening clock, and the schedule is asserted due only after 18:00 on a Sunday.
+  Worth repeating for M8's deliverer and M9's brief.
+
+**Added beyond §8.7**
+
+- **Write it now.** The job runs once a week; a feature nobody can see until Sunday is a feature
+  nobody trusts. Same reasoning as M4's "Sync now".
+
+**Deferred**
+
+- Importing from a course platform. There is nothing to import from, and the point is the record
+  Devon keeps.
+- Reminders. The weekly review is the nudge; more becomes noise he turns off.
+
+**Gate: passed.** `npm run check` green (typecheck, 449 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory. Exercised
+against `next dev`: a skill created, **+30m today took the 7-day total from 0m to 30m on the
+spot**, a second +15m made it 45m across two rows rather than replacing the first, an item added
+with its link, and the review written on demand — "You logged 45m this week, up 45m on last
+week", next step "Keep going on \"Effective TypeScript\"". Writing it twice left one digest row.
+Command shows the review and links through. The cron tick reported `learning-review` as not due
+on a Wednesday, which is right. No horizontal overflow at 375 px on either screen.

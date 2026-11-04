@@ -5,6 +5,7 @@ import { approvals, calendarEvents, tasks, timeline } from "@/db/schema";
 import { staleCaptures } from "@/modules/work/queries";
 import { conflictsInRange, type Conflict } from "@/modules/schedule/queries";
 import { readConnection } from "@/modules/google/tokens";
+import { latestDigest } from "@/modules/learning/queries";
 import { startOfDayInstant } from "./zoned";
 import { addDays, dateInZone } from "./dates";
 import { getSettings } from "./settings";
@@ -21,6 +22,8 @@ export type CommandSnapshot = {
   needsAttention: { id: string; kind: string; title: string; detail: string; href: string }[];
   /** Unacknowledged clashes in the next 14 days, plus anything running into protected time. */
   conflicts: Conflict[];
+  /** The most recent weekly learning review, if one has been written. */
+  learningReview: { day: string; body: string } | null;
 };
 
 const CONFLICT_DAYS = 14;
@@ -32,7 +35,8 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const openWithDue = and(eq(tasks.status, "open"), isNotNull(tasks.due));
 
-  const [waiting, dueWeek, overdueRows, moved, nextEvent, dueList, stale, conflicts, googleConnection] = await Promise.all([
+  const [waiting, dueWeek, overdueRows, moved, nextEvent, dueList, stale, conflicts, googleConnection, review] =
+    await Promise.all([
     db.select({ n: count() }).from(approvals).where(eq(approvals.status, "waiting")),
     db.select({ n: count() }).from(tasks).where(and(openWithDue, gte(tasks.due, today), lte(tasks.due, weekEnd))),
     db.select({ n: count() }).from(tasks).where(and(openWithDue, lt(tasks.due, today))),
@@ -57,6 +61,7 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
     staleCaptures(db, now),
     conflictsForCommand(timeZone, today, now),
     readConnection(),
+    latestDigest(db, "learning_review"),
   ]);
 
   return {
@@ -91,6 +96,7 @@ export async function loadCommand(timeZone: string, now = new Date()): Promise<C
     ],
     // Acknowledged pairs are hidden: Devon has already decided that one is fine.
     conflicts: conflicts.filter((conflict) => conflict.kind === "protected" || !conflict.acknowledged),
+    learningReview: review ? { day: review.day, body: review.body } : null,
   };
 }
 

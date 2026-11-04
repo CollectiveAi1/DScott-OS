@@ -54,6 +54,16 @@ export const JOBS: JobDefinition[] = [
     name: "learning-review",
     schedule: { kind: "weeklyAfter", weekday: 7, time: "18:00" },
     purpose: "Writes the weekly learning review.",
-    handler: notYetBuilt("M7"),
+    handler: async ({ db, timeZone, now }) => {
+      const { dateInZone } = await import("@/lib/dates");
+      const { writeLearningReview } = await import("@/modules/learning/service");
+
+      const result = await writeLearningReview(db, dateInZone(now, timeZone));
+      if (!result.ok) throw new Error(result.error.message);
+      return {
+        status: "ok",
+        detail: `${result.data.review.skills.length} skill(s), ${result.data.review.totals.thisWeek} min this week (${result.data.source})`,
+      };
+    },
   },
 ];
