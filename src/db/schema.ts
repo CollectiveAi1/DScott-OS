@@ -39,6 +39,9 @@ export const approvalKindEnum = pgEnum("approval_kind", ["email", "text", "calen
 export const approvalStatusEnum = pgEnum("approval_status", [
   "waiting",
   "scheduled",
+  // Claimed by the delivery job. A row sits here only while a send is in flight; one stuck
+  // for more than 15 minutes is swept back to failed.
+  "sending",
   "sent",
   "failed",
   "rejected",

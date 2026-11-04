@@ -8,13 +8,19 @@ import type { FormState } from "./auth/actions";
 import { requireOwner } from "./auth/session";
 import { getSettings } from "./settings";
 import { isSupportedTimeZone, parseProtectedBlock } from "./settings-rules";
+import { hasRealProvider, NO_PROVIDER_MESSAGE } from "@/modules/approvals/providers";
 
 export async function setDeliveryModeAction(_prev: FormState, form: FormData): Promise<FormState> {
   await requireOwner();
   const mode = form.get("mode");
   if (mode !== "sandbox" && mode !== "live") return { error: "Unknown delivery mode." };
-  // Going live is the one switch that lets approvals reach real people, so it needs a typed confirmation.
-  if (mode === "live" && form.get("confirm") !== "LIVE") return { error: "Type LIVE to confirm." };
+  // Going live is the one switch that lets approvals reach real people, so it needs a typed
+  // confirmation — and, since M8, a provider that could actually deliver. The typed word guards
+  // intent; the provider check guards capability, and both have to pass.
+  if (mode === "live") {
+    if (form.get("confirm") !== "LIVE") return { error: "Type LIVE to confirm." };
+    if (!hasRealProvider()) return { error: NO_PROVIDER_MESSAGE };
+  }
 
   await getSettings();
   await getDb().update(settings).set({ deliveryMode: mode }).where(eq(settings.id, 1));

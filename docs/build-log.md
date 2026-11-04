@@ -506,3 +506,70 @@ with its link, and the review written on demand — "You logged 45m this week, u
 week", next step "Keep going on \"Effective TypeScript\"". Writing it twice left one digest row.
 Command shows the review and links through. The cron tick reported `learning-review` as not due
 on a Wednesday, which is right. No horizontal overflow at 375 px on either screen.
+
+## 2026-11-04 · M8 · Approvals engine
+
+Branch `m8-approvals`, off `main`. Spec `docs/specs/SPEC-008-approvals.md`, plan
+`docs/plans/PLAN-008-approvals.md`.
+
+**Shipped**
+
+- `src/modules/approvals/`: the state machine, payload schemas per kind, the provider interface
+  and its no-op, the service, queries, actions and the screen.
+- `/approvals` with Waiting · Scheduled · Failed · History.
+- The real `approvals-deliver` job body, replacing M1's stub.
+- Going live refused while no provider can deliver.
+- Migration `0008_approvals`: `approval_status` gains `sending`.
+
+**Decided at this gate**
+
+- **The dangerous thing is structurally hard, not merely discouraged.** One function expresses
+  an outbound action, one pure machine decides what may follow, and in v1 no provider exists
+  that could send. Each of those is a separate thing that would have to fail.
+- **Sandbox is a branch, not a flag.** A sandbox approval reaches `sent` at the moment of
+  approval and the delivery job only ever looks at `scheduled` rows, so there is no path from
+  sandbox to a provider to accidentally take. A spy provider asserts zero calls rather than
+  trusting the reading.
+- **The delivery mode is read from settings, never from the form.** A posted `mode=live` must
+  not be able to assert its way past sandbox. In the one module whose job is refusing to send,
+  the value that decides whether something sends cannot come from the request.
+- **`NoopProvider` is the guarantee, not a placeholder.** PRD §7 puts "no automatic outbound
+  send" in WON'T HAVE for this release; this is that sentence written as code. A test asserts
+  `hasRealProvider()` is false, so if it ever flips by accident the suite says so first.
+- **Claiming is one atomic `UPDATE … RETURNING`.** The database decides who gets a row, so two
+  overlapping ticks cannot both deliver it. Tested with two concurrent claims.
+- **A failed row goes back to Devon, not back to the queue.** Automatic retry of an outbound
+  message is how one send becomes three.
+- **Added beyond §8.8's table: `scheduled → rejected`.** Approving is not the last moment Devon
+  may change his mind; without it, an approved-but-unsent message could not be stopped, which is
+  the opposite of what this module is for. A claimed row is past recall and stays uncancellable.
+- **Enter saves, never approves.** The decision buttons live outside the editable form. Verified
+  in a browser with a real keypress, not only by reading the markup.
+- **The job records v1's failures as failures.** With nothing connected every delivery fails, so
+  the run is `error` with the reason. Reporting it as `ok` would make the job history useless
+  exactly when it matters. "Nothing due" stays `skipped`.
+
+**Found while building**
+
+- **The M1 cron test needed retiring again.** It asserted `approvals-deliver` reported "Ships in
+  M8." — the second milestone to hit that (M4 was the first). One stub assertion remains,
+  `daily-brief`, which M9 replaces. Worth expecting rather than rediscovering.
+- `editApproval` cannot go through the generic `apply`, because an edit changes the payload and
+  leaves the status alone. It still asks the machine whether an edit is allowed, then
+  compare-and-sets on `status = 'waiting'`, so a draft edited at the same moment it is approved
+  cannot overwrite the approved version.
+
+**Deferred**
+
+- Resend and Twilio. v2, and the PRD gates going live on one of them existing.
+- Provider retries and scheduling beyond "now or a chosen time".
+
+**Gate: passed.** `npm run check` green (typecheck, 520 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory. Exercised
+against `next dev`: three drafts in Waiting across all three kinds; **Enter in the subject field
+saved the edit and left it waiting**; approving in sandbox moved it to History as sent/sandbox
+and wrote "Sandbox: would have sent …" to the contact's timeline; the Command tile read 2 and so
+did the Waiting tab; typing LIVE in Settings was refused with "No email or text provider is
+connected…" and the mode stayed sandbox; a scheduled text was claimed by the cron tick, failed
+with "No text provider connected.", landed in Failed with that reason and a recorded `error`
+run, and **Back to Waiting** returned it clean. No horizontal overflow at 375 px.

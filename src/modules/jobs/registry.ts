@@ -42,7 +42,21 @@ export const JOBS: JobDefinition[] = [
     name: "approvals-deliver",
     schedule: { kind: "interval", everyMinutes: 5 },
     purpose: "Delivers approvals Devon has said yes to, in live mode only.",
-    handler: notYetBuilt("M8"),
+    handler: async ({ db, now }) => {
+      const { deliverDue } = await import("@/modules/approvals/service");
+      const summary = await deliverDue(db, { now });
+
+      if (summary.claimed === 0 && summary.swept === 0) {
+        return { status: "skipped", detail: "Nothing due." };
+      }
+      const detail = `${summary.claimed} due: ${summary.sent} sent, ${summary.failed} failed${
+        summary.swept > 0 ? `, ${summary.swept} swept` : ""
+      }`;
+      // A failure is the normal case in v1 — no provider is connected — so it is recorded as a
+      // failed run with the reason rather than passed off as a success.
+      if (summary.failed > 0) throw new Error(`${detail}. ${summary.reasons.join("; ")}`);
+      return { status: "ok", detail };
+    },
   },
   {
     name: "daily-brief",

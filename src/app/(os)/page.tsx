@@ -11,12 +11,20 @@ import { eventRange } from "@/modules/schedule/components/event-chip";
 
 export const metadata: Metadata = { title: "Command" };
 
-function Tile({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function Tile({ label, value, detail, href }: { label: string; value: string; detail?: string; href?: string }) {
   return (
     <article className="rounded-[--radius-panel] border border-line bg-surface p-4">
       <h2 className="text-xs uppercase tracking-wider text-muted">{label}</h2>
       <p className="mt-2 font-mono text-2xl text-ink">{value}</p>
-      {detail ? <p className="mt-1 text-xs text-muted">{detail}</p> : null}
+      {detail ? (
+        href ? (
+          <Link href={href} className="mt-1 block text-xs text-muted underline hover:text-ink">
+            {detail}
+          </Link>
+        ) : (
+          <p className="mt-1 text-xs text-muted">{detail}</p>
+        )
+      ) : null}
     </article>
   );
 }
@@ -51,7 +59,12 @@ export default async function CommandPage() {
       </section>
 
       <section aria-label="At a glance" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label="Waiting for approval" value={String(snapshot.waitingApprovals)} />
+        <Tile
+          label="Waiting for approval"
+          value={String(snapshot.waitingApprovals)}
+          detail={snapshot.waitingApprovals > 0 ? "Open Approvals" : undefined}
+          href={snapshot.waitingApprovals > 0 ? "/approvals" : undefined}
+        />
         <Tile
           label="Due this week"
           value={String(snapshot.dueThisWeek)}

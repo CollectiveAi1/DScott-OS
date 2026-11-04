@@ -2,18 +2,19 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M7 shipped (Learning)
+## Status: M8 shipped (Approvals engine)
 
 | Done | Not yet |
 | --- | --- |
 | Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Learning, Contacts, Pipelines, Approvals, Operator (M6–M9) |
-| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Approvals delivery (M8) |
+| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | The Operator and the daily brief (M9) |
 | Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Vercel project + Supabase database (needs a Supabase project) |
 | Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Approvals delivery, the daily brief and the weekly review (M7–M9) |
 | Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | Shared rate limit store (current limit is per instance) |
 | Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | Approvals delivery (M8) and the Operator (M9) |
-| Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | The Operator (M9) and the final Command + deploy (M10) |
-| Learning: skills, practice log, and a weekly review written every Sunday | The official team schedule itself, which has not arrived |
+| Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | The final Command and the deploy (M10) |
+| Learning: skills, practice log, and a weekly review written every Sunday | Email and text providers — v2, and going live is blocked until one exists |
+| Approvals: the gate every outbound action passes through | The official team schedule itself, which has not arrived |
 | Command: capture, live tiles, due this week, Conflicts, Needs attention | |
 | Settings: delivery mode, time zone, protected time, connections, export, job history | |
 | Encryption for stored keys, job runner, `/api/cron/tick` | |
@@ -185,6 +186,39 @@ one task, enforced by a unique key in the database rather than by a check that c
 Settings → Pipelines. The seeded stages are drafts. Renaming a stage **moves the deals standing
 in it** and keeps its billing flag; removing a stage that still has deals is refused and says how
 many.
+
+## Approvals
+
+**Nothing reaches another person without Devon's yes.** Every outbound action — an email, a
+text, a calendar write — is created as a row in `approvals` and waits. No module, automation or
+Operator tool may call a provider directly; `createApproval` is the only way to express the
+intent, and approving is the only way it moves.
+
+`/approvals` has four tabs: **Waiting · Scheduled · Failed · History**. Each card shows who
+drafted it (you, the Operator or an automation), who it is addressed to, and the full payload in
+an editable form.
+
+**Pressing Enter in a card saves. It never approves.** The decision buttons sit outside the
+editable form, so a reflex cannot send something.
+
+### What happens when you approve
+
+- **In sandbox**, the approval goes straight to History marked sent/sandbox, and a line is added
+  to the contact's timeline: *"Sandbox: would have sent …"*. There is no code path from sandbox
+  to a provider — not a flag that gets checked, a different branch that ends first.
+- **In live**, it is scheduled, then claimed and delivered by the `approvals-deliver` job every
+  five minutes. A scheduled item can still be cancelled; a claimed one cannot.
+
+A failed delivery goes to Failed with its reason and waits for you — nothing is retried
+automatically, because that is how one message becomes three. **Back to Waiting** puts it back
+for another look.
+
+### This version cannot send
+
+v1 ships only a no-op provider. Every delivery fails with "No email provider connected" or the
+equivalent, and **going live is refused** — even with LIVE typed — until a real provider exists.
+That is deliberate: PRD §10's gate to v2 is a full week run in sandbox. Resend and Twilio arrive
+in v2.
 
 ## Learning
 
