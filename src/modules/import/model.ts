@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { anthropic, hasModelKey, operatorModelName, textOf, DEFAULT_OPERATOR_MODEL } from "@/lib/model";
 import { interpretRow, type ParsedRow, type RowError, type RowFields } from "./parse";
 
 /**
@@ -15,16 +16,11 @@ export type ModelDocument =
   | { kind: "pdf"; base64: string }
   | { kind: "image"; mediaType: string; base64: string };
 
-/** PRD §6 names model ids that do not exist; this is the real one, still overridable. */
-export const DEFAULT_MODEL = "claude-sonnet-5";
-
-export function modelName(): string {
-  return process.env.OPERATOR_MODEL || DEFAULT_MODEL;
-}
-
-export function hasModelKey(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
-}
+// The model id, the name resolution and the client live in `src/lib/model.ts`, shared with M7's
+// review and M9's Operator. Kept exported under this module's names for its own callers.
+export const DEFAULT_MODEL = DEFAULT_OPERATOR_MODEL;
+export const modelName = operatorModelName;
+export { hasModelKey };
 
 /**
  * The document is **data, not instructions** (PRD §6.3). It is a schedule someone else wrote,
@@ -133,8 +129,7 @@ export async function extractSchedule(model: ScheduleModel, document: ModelDocum
 export function anthropicModel(): ScheduleModel {
   return {
     async extract({ instructions, document }) {
-      const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60_000, maxRetries: 1 });
+      const client = await anthropic();
 
       const content =
         document.kind === "text"
@@ -164,10 +159,7 @@ export function anthropicModel(): ScheduleModel {
         messages: [{ role: "user", content }],
       });
 
-      return message.content
-        .filter((block): block is { type: "text"; text: string; citations: never } => block.type === "text")
-        .map((block) => block.text)
-        .join("");
+      return textOf(message.content);
     },
   };
 }

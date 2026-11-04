@@ -8,3 +8,6 @@ next-env.d.ts
 .env.*
 !.env.example
 .vercel
+
+# Local editor/agent preview config, not part of the build.
+.claude

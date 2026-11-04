@@ -64,6 +64,13 @@
       "when": 1793808891111,
       "tag": "0008_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793812148043,
+      "tag": "0009_operator",
+      "breakpoints": true
     }
   ]
 }

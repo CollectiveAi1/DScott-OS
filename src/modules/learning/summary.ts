@@ -1,18 +1,16 @@
+import { anthropic, hasModelKey, summaryModelName, textOf, DEFAULT_SUMMARY_MODEL } from "@/lib/model";
 import { renderReview } from "./render";
 import type { LearningReview } from "./review";
 
 /** The narrow slice of the model this needs, injected so the path is testable without a key. */
 export type SummaryModel = { write(input: { instructions: string; review: string }): Promise<string> };
 
-/** PRD §6 names `claude-haiku-5-5`, which does not exist. This is the real small model. */
-export const DEFAULT_SUMMARY_MODEL = "claude-haiku-4-5-20251001";
-
-export function summaryModelName(): string {
-  return process.env.SUMMARY_MODEL || DEFAULT_SUMMARY_MODEL;
-}
+// The model id, the name resolution and the client all live in `src/lib/model.ts`, shared with
+// M5's extractor and M9's Operator. Re-exported here so this module's callers need one import.
+export { DEFAULT_SUMMARY_MODEL, summaryModelName };
 
 export function hasSummaryKey(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return hasModelKey();
 }
 
 /**
@@ -59,9 +57,7 @@ export async function summarise(review: LearningReview, model: SummaryModel | nu
 export function anthropicSummaryModel(): SummaryModel {
   return {
     async write({ instructions, review }) {
-      const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60_000, maxRetries: 1 });
-
+      const client = await anthropic();
       const message = await client.messages.create({
         model: summaryModelName(),
         max_tokens: 1000,
@@ -69,10 +65,7 @@ export function anthropicSummaryModel(): SummaryModel {
         messages: [{ role: "user", content: `<review>\n${review}\n</review>` }],
       });
 
-      return message.content
-        .filter((block): block is { type: "text"; text: string; citations: never } => block.type === "text")
-        .map((block) => block.text)
-        .join("");
+      return textOf(message.content);
     },
   };
 }

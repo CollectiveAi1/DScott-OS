@@ -10,14 +10,10 @@ export type JobDefinition = {
 };
 
 /**
- * All four v1 jobs are registered now so the schedule, the recording and the response shape are
- * provable before any integration exists. Each milestone replaces one stub with a real body and
- * changes nothing else here.
+ * All four v1 jobs were registered in M1 so the schedule, the recording and the response shape
+ * were provable before any integration existed. Each milestone replaced one stub with a real
+ * body and changed nothing else here. As of M9 there are no stubs left.
  */
-function notYetBuilt(milestone: string): JobHandler {
-  return async () => ({ status: "skipped", detail: `Ships in ${milestone}.` });
-}
-
 // Registry order is execution order.
 export const JOBS: JobDefinition[] = [
   {
@@ -62,7 +58,23 @@ export const JOBS: JobDefinition[] = [
     name: "daily-brief",
     schedule: { kind: "dailyAfter", time: "06:30" },
     purpose: "Writes the morning brief.",
-    handler: notYetBuilt("M9"),
+    handler: async ({ db, timeZone, now }) => {
+      const { dateInZone } = await import("@/lib/dates");
+      const { getSettings } = await import("@/lib/settings");
+      const { writeDailyBrief } = await import("@/modules/operator/brief-service");
+
+      const day = dateInZone(now, timeZone);
+      const { protectedTime } = await getSettings();
+      const result = await writeDailyBrief(db, { day, timeZone, now, protectedTime });
+      if (!result.ok) throw new Error(result.error.message);
+
+      const { data } = result.data;
+      const events = data.byArena.reduce((total, group) => total + group.items.length, 0);
+      return {
+        status: "ok",
+        detail: `${day}: ${events} event(s), ${data.overdue.length} overdue, ${data.conflicts.length} conflict(s) (${result.data.source})`,
+      };
+    },
   },
   {
     name: "learning-review",

@@ -2,20 +2,21 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M8 shipped (Approvals engine)
+## Status: M9 shipped (Operator + daily brief)
 
 | Done | Not yet |
 | --- | --- |
-| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Learning, Contacts, Pipelines, Approvals, Operator (M6–M9) |
-| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | The Operator and the daily brief (M9) |
+| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | The final Command screen, and the Vercel + Supabase deploy (M10) |
+| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Email and text providers — v2, and going live is blocked until one exists |
 | Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Vercel project + Supabase database (needs a Supabase project) |
-| Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Approvals delivery, the daily brief and the weekly review (M7–M9) |
-| Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | Shared rate limit store (current limit is per instance) |
-| Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | Approvals delivery (M8) and the Operator (M9) |
-| Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | The final Command and the deploy (M10) |
-| Learning: skills, practice log, and a weekly review written every Sunday | Email and text providers — v2, and going live is blocked until one exists |
-| Approvals: the gate every outbound action passes through | The official team schedule itself, which has not arrived |
-| Command: capture, live tiles, due this week, Conflicts, Needs attention | |
+| Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Shared rate limit store (current limit is per instance) |
+| Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | The official team schedule itself, which has not arrived |
+| Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | Streaming Operator replies, and a spend cap — both want real usage behind them |
+| Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | |
+| Learning: skills, practice log, and a weekly review written every Sunday | |
+| Approvals: the gate every outbound action passes through | |
+| Operator: 18 tools, visible tool calls, and a morning brief on Command | |
+| Command: capture, live tiles, due this week, Conflicts, Needs attention, today's brief | |
 | Settings: delivery mode, time zone, protected time, connections, export, job history | |
 | Encryption for stored keys, job runner, `/api/cron/tick` | |
 | Schema for all v1 tables, tracked migrations, idempotent seed | |
@@ -247,6 +248,61 @@ what gets stored. The review says which wrote it.
 Each review is stored as the text it was that Sunday, not recomputed on read: a record, not a
 view.
 
+## The Operator
+
+`/operator` is a chat with tools. Every message it sends runs a server-side loop: up to 8 tool
+rounds, 60 seconds, and each call is shown under the answer — tool name, a one-line argument
+summary, ok or error, collapsed. The sequence is the explanation, so it is on the page rather
+than in a log.
+
+**What it can do.** 18 tools across Work, Schedule, Contacts, Deals, Learning and Approvals:
+search and create tasks, read the calendar and find genuinely free time, create manual events,
+read a contact's timeline and add notes, summarise pipelines and move a deal's stage, log
+practice, and draft a message. Eight of those write; the rest only read.
+
+**What it cannot do, structurally.** No tool deletes a row, sends anything, reaches an external
+service, or reads or writes settings, the owner record or stored keys. That is not a promise in
+the system prompt — `src/modules/operator/registry.ts` makes every tool declare whether it
+writes, and `tests/operator.registry.test.ts` pins both the full list and the write list. A new
+tool that writes fails the test suite until someone adds it there deliberately.
+
+That matters because **everything the Operator reads is text somebody else wrote** — event
+titles, contact notes, imported schedules. The prompt tells it to treat all of that as data and
+never as instructions, and tool results come back as JSON in a tool-result block rather than
+spliced into the prose. But the prompt is a quality instrument, not the boundary. The boundary
+is the tool list, and it holds whether or not the model behaves.
+
+So the worst a successfully misled Operator can do is write a task, a note or an event, or leave
+a **draft waiting in Approvals** — where nothing moves until you approve it, and in this version
+nothing can be delivered at all.
+
+**It never claims to have sent anything.** `messages.draft` reaches exactly one function,
+`createApproval`, and its result says so in words. Its idempotency key is a hash of what is being
+said to whom, so a retried call returns the draft that already exists instead of writing a
+second one.
+
+**Context.** Each turn sends the system prompt, the last 30 messages of the thread, and a
+computed snapshot of today — the date, the time zone, the next 24 hours, the overdue count and
+how many approvals are waiting. So the first message of a thread already knows what day it is.
+
+**Without a key** `/operator` says "Add `ANTHROPIC_API_KEY` to enable the Operator" and threads
+stay readable. Capture, the schedule, approvals and the brief all keep working.
+
+**Cost.** Input and output tokens are recorded per turn and totalled over 30 days in Settings.
+Logged and visible rather than capped: a cap that refuses mid-turn is worse than a number you
+can watch.
+
+### The morning brief
+
+The `daily-brief` job runs once after 06:30 local and writes today's brief: events by arena,
+travel, clashes in the next 72 hours, tasks due or overdue, deals with no or an overdue next
+step, approvals waiting, the Misc inbox count, and Family events today and tomorrow. It shows on
+Command, with **Regenerate** when the morning has moved on.
+
+Same contract as the weekly review: computed as data first, then phrased. A deterministic
+template is the floor, so a brief exists with no key, on an API error, or on a reply too short
+to be one. One row per day — regenerating replaces it.
+
 ## Importing the team schedule
 
 `/schedule/import`. Basketball only, and nothing is written until you have seen a preview and
@@ -295,8 +351,8 @@ later import.
 
 `docs/PRD.md` §6 names the models `claude-sonnet-5-5` and `claude-haiku-5-5`. **Neither id
 exists.** The code uses `claude-sonnet-5` (overridable with `OPERATOR_MODEL`) and
-`claude-haiku-4-5-20251001` (overridable with `SUMMARY_MODEL`). Worth fixing in the PRD before
-M9 builds the Operator on those lines.
+`claude-haiku-4-5-20251001` (overridable with `SUMMARY_MODEL`), both resolved in one place,
+`src/lib/model.ts`. Flagged since M5 and still worth fixing in the PRD itself.
 
 ## Known advisories
 

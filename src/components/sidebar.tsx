@@ -13,7 +13,7 @@ const MENU: { group: string; screens: Screen[] }[] = [
     screens: [
       { label: "Command", href: "/" },
       { label: "Schedule", href: "/schedule" },
-      { label: "Operator", ships: "v1" },
+      { label: "Operator", href: "/operator" },
       { label: "Approvals", href: "/approvals" },
       { label: "Work", href: "/work" },
     ],

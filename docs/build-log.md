@@ -573,3 +573,89 @@ did the Waiting tab; typing LIVE in Settings was refused with "No email or text 
 connected…" and the mode stayed sandbox; a scheduled text was claimed by the cron tick, failed
 with "No text provider connected.", landed in Failed with that reason and a recorded `error`
 run, and **Back to Waiting** returned it clean. No horizontal overflow at 375 px.
+
+## 2026-11-04 · M9 · Operator + daily brief
+
+Spec `docs/specs/SPEC-009-operator.md`, plan `docs/plans/PLAN-009-operator.md`, branch
+`m9-operator`.
+
+**The decision this milestone turns on**
+
+M9 is the first time a model acts on Devon's data rather than reading a document he handed it.
+Every title, note, location and contact detail it reads was written by somebody else, and a
+model that can be instructed by its input has to be assumed to be instructed by its input
+sometimes. So the question was not "will the prompt hold" but **what is the worst thing a
+successfully injected Operator can do** — and the answer had to be small enough to live with.
+
+It can write a task, a note, a practice row, an event, a stage move, or a draft that sits in
+Approvals. Nothing leaves the instance, nothing is deleted, no setting changes, and no message
+reaches a person without Devon pressing approve. M8 was built one milestone early for exactly
+this; M9 is where it becomes load-bearing.
+
+**Decisions**
+
+- **The tool registry is the boundary, not the system prompt.** Each tool declares
+  `effect: "read" | "write"`, and a test pins both the full set of 18 and the subset of 8 that
+  write. A new tool that writes fails the suite until someone edits that list on purpose. The
+  prompt is a quality instrument; it holds when things work, and the tool set holds when they
+  do not.
+- **No tool reads settings.** The time zone and the protected blocks are resolved once at the
+  action layer and handed down in `ToolContext`. That is both the testable shape and the honest
+  one — a settings read inside the module whose boundary is "no tool touches settings" was the
+  wrong place for it.
+- **`messages.draft` reaches exactly one function:** M8's `createApproval`. Its idempotency key
+  is a hash of what is being said to whom, so a retried tool call returns the draft that already
+  exists rather than writing a second one. Its output says `sent: false` in so many words.
+- **Pure first, again.** The free-slot finder and the brief were written and tested before the
+  loop existed, so by the time a model was involved everything it could reach was already
+  covered. `freeSlots` is pure instant arithmetic — no minutes-into-a-day — so a 23- or 25-hour
+  day needs no special case and a returned time is always one that exists.
+- **The brief falls back to the template on anything.** No key, an error, or a reply too short
+  to be a brief, and the deterministic version is what gets stored. A brief that only works when
+  an API key does is not a brief you can plan a morning around.
+- **Deterministic thread titles.** From the first message, cut at a word. A title is not worth
+  an API call and a deterministic one cannot surprise.
+- **Usage is logged, not capped.** A cap that refuses mid-turn is worse than a visible number
+  for a single-owner instance. Settings shows the 30-day total.
+- **`daily-brief` was the last of M1's four stubs.** The registry has none left.
+
+**Found while building**
+
+- **A claim in the spec was wrong and was withdrawn.** §4 said writes inside one tool call are
+  transactional (PRD §6.3). They are not — M6's `moveDeal` already writes the stage move and the
+  handoff task in sequence. What is true is narrower: each tool makes at most one logical write
+  through an existing tested service, and those services carry their own idempotency. Claiming
+  atomicity the code does not have is worse than the gap.
+- **`schedule.range` silently truncated an over-long window**, so a twelve-month question came
+  back with January's events under a twelve-month heading. A wrong answer dressed as a complete
+  one. Now refused, with a message the model can act on.
+- **The brief wrote conflict times as ISO instants** — "…· 2026-11-04T23:15:00.000Z" for a clash
+  at 18:15. Both the wrong number and the wrong language, found in the browser pass, now local
+  wall time with a regression test.
+- **Earlier tool calls cannot be replayed to the API as blocks.** A `tool_use` whose
+  `tool_result` has fallen outside the 30-message window is an API error. Prior turns go back as
+  the conversation plus a line naming which tools ran; the full record stays on the thread.
+- **The Anthropic client was extracted** to `src/lib/model.ts`. M9 would have been the third copy
+  of the same constructor.
+- **PRD §6 still names two model ids that do not exist** (`claude-sonnet-5-5`,
+  `claude-haiku-5-5`). Flagged since M5; now worked around in one place instead of three.
+
+**Deferred**
+
+- Streaming replies. A slower, legible turn beats a half-rendered decision.
+- Voice, MCP servers and Conductor loops — v3.
+- A spend cap, which wants real usage behind it.
+
+**Gate: passed.** `npm run check` green (typecheck, 632 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory. Exercised
+against `next dev` with threads seeded through the real service and a scripted client: the
+thread renders with its tool calls collapsed and **the `messages.draft` summary carries no
+message body**; the Operator's draft landed in Approvals as waiting, attributed to the Operator;
+a call to a tool that does not exist came back ERROR with nothing changed; today's brief renders
+on Command and **Regenerate replaced it in place** rather than writing a second; Settings reports
+3 turns and 11,040 input tokens; with no key `/operator` shows "Add ANTHROPIC_API_KEY…" and the
+brief still writes. **Enter sends and Shift+Enter does not** — verified with a dispatched
+KeyboardEvent, because this environment's key injection delivers `key: ""`; the handler was not
+loosened to accommodate that. With a deliberately bad key the failure path ran for real: the
+error showed, the composer kept its text, and the thread was left with the user's message and no
+assistant row. No horizontal overflow at 375 px with every tool call expanded.

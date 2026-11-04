@@ -8,6 +8,7 @@ import { arenaLabel, ArenaTag, type ArenaName } from "@/components/arena-tag";
 import { QuickCapture } from "@/modules/work/components/quick-capture";
 import { AcknowledgeButton } from "@/modules/schedule/components/acknowledge";
 import { eventRange } from "@/modules/schedule/components/event-chip";
+import { BriefPanel } from "@/modules/operator/components/brief-panel";
 
 export const metadata: Metadata = { title: "Command" };
 
@@ -112,6 +113,8 @@ export default async function CommandPage() {
           </ul>
         )}
       </section>
+
+      <BriefPanel brief={snapshot.dailyBrief} />
 
       {snapshot.learningReview ? (
         <section aria-labelledby="review-heading" className="mt-10">

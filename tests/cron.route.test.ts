@@ -71,9 +71,12 @@ describe("GET /api/cron/tick", () => {
     const approvals = body.ran.find((entry) => entry.job === "approvals-deliver");
     expect(approvals).toEqual({ job: "approvals-deliver", status: "skipped", detail: "Nothing due." });
 
-    // The one job that has not shipped yet still says so.
+    // daily-brief is real as of M9, the last of M1's four stubs to be replaced. Whether it is
+    // due depends on the local clock, so assert that it is registered and, if it ran, that it
+    // wrote a brief rather than reporting a milestone.
     const brief = [...body.ran, ...body.skipped].find((entry) => entry.job === "daily-brief");
     expect(brief).toBeTruthy();
+    if (brief && "detail" in brief) expect(brief.detail).not.toMatch(/Ships in/);
   });
 
   it("reports the interval jobs as not due on an immediate second tick", async () => {

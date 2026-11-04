@@ -51,6 +51,8 @@ export const jobStatusEnum = pgEnum("job_status", ["ok", "error", "skipped"]);
 export const digestKindEnum = pgEnum("digest_kind", ["daily_brief", "learning_review"]);
 // Who wrote the prose: a template that always works, or the model when a key exists.
 export const digestSourceEnum = pgEnum("digest_source", ["offline", "model"]);
+export const operatorRoleEnum = pgEnum("operator_role", ["user", "assistant", "tool"]);
+export const toolStatusEnum = pgEnum("tool_status", ["ok", "error"]);
 
 // Shared columns. Every row records who made it and when.
 const stamps = {
@@ -439,4 +441,49 @@ export const digests = pgTable(
     ...stamps,
   },
   (t) => [uniqueIndex("digests_kind_day_idx").on(t.kind, t.day), index("digests_kind_idx").on(t.kind, t.day.desc())],
+);
+
+// ---------------------------------------------------------------------------
+// Operator (M9)
+// ---------------------------------------------------------------------------
+
+/**
+ * One conversation with the Operator. The title is made from the first thing Devon said, not by
+ * the model: a title is not worth an API call, and a deterministic one cannot surprise.
+ */
+export const operatorThreads = pgTable(
+  "operator_threads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    ...stamps,
+  },
+  (t) => [index("operator_threads_updated_idx").on(t.updatedAt.desc())],
+);
+
+/**
+ * Every turn, written as it happens rather than at the end.
+ *
+ * A tool row lands the moment its tool returns, so a turn that times out or dies mid-loop leaves
+ * a thread that honestly shows what ran. `content` holds the shape for its role: `{ text }` for
+ * a user message, `{ text, usage?, promptVersion? }` for an assistant one, `{ input, output }`
+ * for a tool call. Usage sits on the assistant row because that is the row a turn produced.
+ */
+export const operatorMessages = pgTable(
+  "operator_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => operatorThreads.id, { onDelete: "cascade" }),
+    role: operatorRoleEnum("role").notNull(),
+    content: jsonb("content").$type<Record<string, unknown>>().notNull().default({}),
+    toolName: text("tool_name"),
+    toolStatus: toolStatusEnum("tool_status"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("operator_messages_thread_idx").on(t.threadId, t.createdAt),
+    index("operator_messages_created_idx").on(t.createdAt),
+  ],
 );

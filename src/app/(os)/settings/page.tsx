@@ -15,6 +15,8 @@ import { calendarEvents } from "@/db/schema";
 import { PipelineSettingsPanel } from "@/modules/crm/components/pipeline-settings";
 import { listPipelines } from "@/modules/crm/queries";
 import { DeliveryModeForm, PasswordForm, ProtectedTimeForm, TimezoneForm } from "./forms";
+import { hasModelKey } from "@/lib/model";
+import { tokenUsage } from "@/modules/operator/queries";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -100,6 +102,10 @@ export default async function SettingsPage({
   }
 
   const crmPipelines = await listPipelines(getDb());
+
+  // Thirty days of Operator spend. Logged and shown rather than capped: a cap that refuses
+  // mid-turn is worse than a number Devon can see, for one instance with one owner.
+  const usage = await tokenUsage(getDb(), new Date(Date.now() - 30 * 24 * 3_600_000));
 
   const [syncedCount] = await getDb()
     .select({ n: count() })
@@ -203,6 +209,35 @@ export default async function SettingsPage({
             );
           })}
         </ul>
+      </Panel>
+
+      <Panel
+        id="usage-heading"
+        heading="Operator usage"
+        description="Tokens sent to and received from the model over the last 30 days, across every thread."
+      >
+        {usage.turns === 0 ? (
+          <p className="mt-4 text-sm text-muted">
+            {hasModelKey()
+              ? "No turns yet."
+              : "No model key is set, so the Operator is closed. Briefs still run from the template."}
+          </p>
+        ) : (
+          <dl className="mt-4 grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <dt className="text-muted">Turns</dt>
+              <dd className="font-mono text-ink">{usage.turns.toLocaleString("en-US")}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Input tokens</dt>
+              <dd className="font-mono text-ink">{usage.input.toLocaleString("en-US")}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Output tokens</dt>
+              <dd className="font-mono text-ink">{usage.output.toLocaleString("en-US")}</dd>
+            </div>
+          </dl>
+        )}
       </Panel>
 
       <Panel
