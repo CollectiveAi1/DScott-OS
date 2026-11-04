@@ -367,3 +367,76 @@ previewed as "1 changed · moved" and wrote 1 update with the row keeping its id
 broken line, a dropped game and a new game previewed as 1 new, 2 to remove, 1 error on line 4
 with the reason, and confirmed exactly that. Imported events render on the week grid beside
 manual ones and open read-only apart from notes. No horizontal overflow at 375 px.
+
+## 2026-11-03 · M6 · Contacts + Pipelines
+
+Branch `m6-contacts-pipelines`, off `main`. Spec `docs/specs/SPEC-006-contacts-pipelines.md`,
+plan `docs/plans/PLAN-006-contacts-pipelines.md`.
+
+**Shipped**
+
+- `src/modules/crm/`: money, business days, the next-step rule, the two handoffs, queries,
+  service, actions and the screens.
+- `/contacts` with search and type filters; the contact page with a merged, cursor-paginated
+  timeline and the three log buttons; `/pipelines` with next-step discipline and stage moves;
+  Settings → Pipelines.
+- Migration `0006_crm`: `pipelines.billing_stages`, `tasks.handoff_key` (unique), and a
+  `(contact_id, created_at desc)` index on timeline.
+- `src/lib/form-fields.ts`: the shared optional-field helpers (see below).
+- The task drawer's contact and deal pickers, which M2 shipped as placeholders.
+
+**Decided at this gate**
+
+- **Exactly-once is a unique index, not a convention.** `handoff_key` carries
+  `invoice:<dealId>:<stage>` or `onboard:<contactId>` and the insert is `on conflict do nothing`.
+  Inferring "has this already fired" from task titles or timeline history would break the first
+  time a deal was renamed.
+- **The guarantee is no duplicates while the task exists.** The spec first claimed a deleted
+  handoff would never return; it cannot, because deleting the task deletes its key. The honest
+  rule is also the more useful one — a handoff deleted by mistake can come back.
+- **The timeline merges in the application, not in SQL.** Three sources, each indexed and
+  over-fetched to the page size, so one chatty source cannot crowd the others off a page. A test
+  walks 25 rows across three pages asserting no repeats and no gaps.
+- **Do-not-contact is enforced in the service.** The Operator does not use forms, so a check in
+  the UI would be theatre. `assertContactable` ships tested now, ahead of anything that can draft.
+- **A rename moves the deals standing in the stage** and is refused outright if the stage is
+  being removed with deals still in it, naming how many. Losing a deal to a dropdown edit is not
+  an acceptable failure mode.
+- **Money is refused, never rounded.** `$1,250` and `1,250.50` work; anything unreadable gets a
+  message. A deal value quietly coerced into something plausible is worse than one that will not
+  save.
+
+**Found while building**
+
+- **The same form bug, a third time — so it is now one file.** A browser posts *no key at all*
+  for a control it did not render or a box nobody ticked. M3's all-day checkbox, M3's hidden
+  time inputs, and now M6's log form, which showed Devon "Check the form." for a `dealId` that
+  was never on screen. Each module had its own near-identical helpers; they are now
+  `src/lib/form-fields.ts`, tested, and used by Work, Schedule and CRM alike.
+  **Rule: an optional form field must treat absent and empty as the same thing.**
+- **The seed could not reach existing rows.** `billingStages` arrived in this milestone, so every
+  pipeline seeded by an earlier one carried an empty array — silently meaning "no billing handoff
+  will ever fire". `onConflictDoNothing` would never have fixed them. The seed now backfills the
+  starter values *only where nothing is configured*, so an existing install is repaired and
+  Devon's own edits survive. **This is a standing hazard of an idempotent seed: check it at every
+  milestone that adds a column with starter data.**
+- **Renaming a billing stage turned billing off.** The Settings form posts what was ticked before
+  the edit, so the old name no longer matched a stage and was filtered away. The rename map now
+  applies to the billing flags too — the same silent loss as orphaning deals, one level up.
+- A reminder about the local database: `npm run db:seed` while `next dev` holds the PGlite lock
+  appears to succeed and writes nowhere the app can see. Stop the server first.
+
+**Deferred**
+
+- Sending anything. Handoffs are tasks inside the OS; messages are M8's, through Approvals.
+- Importing contacts. PRD §12's default is to start clean.
+- Orgs as their own screen. An org is a field on a contact that creates one if the name is new.
+
+**Gate: passed.** `npm run check` green (typecheck, 397 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory. Exercised
+against `next dev`: a contact created and logged against; making them a Client raised exactly one
+Kenza task; a deal typed as `$1,250` stored 125000; moving it to Deposit, out to Building and
+back to Deposit produced exactly one Ahmad task and three recorded stage moves; Command's "Deals
+moved · 7 days" read 3; the board showed the red edge and "No next step"; removing a populated
+stage was refused with "1 deal still stands in \"Deposit\""; renaming it moved the deal with it.
+No horizontal overflow at 375 px on either screen.

@@ -133,6 +133,8 @@ export type TaskEdit = {
   boardId: string | null;
   boardColumn: string | null;
   projectId: string | null;
+  contactId: string | null;
+  dealId: string | null;
 };
 
 export async function updateTask(db: Db, input: TaskEdit): Promise<Result<Task>> {
@@ -154,6 +156,8 @@ export async function updateTask(db: Db, input: TaskEdit): Promise<Result<Task>>
       boardId: input.boardId,
       boardColumn: input.boardId ? input.boardColumn : null,
       projectId: input.projectId,
+      contactId: input.contactId,
+      dealId: input.dealId,
     })
     .where(eq(tasks.id, input.taskId))
     .returning();

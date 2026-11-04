@@ -22,10 +22,10 @@ const MENU: { group: string; screens: Screen[] }[] = [
     group: "Collective",
     screens: [
       { label: "Learning", ships: "v1" },
-      { label: "Pipelines", ships: "v1" },
+      { label: "Pipelines", href: "/pipelines" },
     ],
   },
-  { group: "People", screens: [{ label: "Contacts", ships: "v1" }] },
+  { group: "People", screens: [{ label: "Contacts", href: "/contacts" }] },
   {
     group: "Growth",
     screens: [

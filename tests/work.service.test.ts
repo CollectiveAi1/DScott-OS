@@ -210,6 +210,8 @@ describe("updateTask", () => {
       boardId,
       boardColumn: "Doing",
       projectId: project.data.id,
+      contactId: null,
+      dealId: null,
     });
 
     expect(result.ok).toBe(true);
@@ -238,6 +240,8 @@ describe("updateTask", () => {
       boardId,
       boardColumn: "Elsewhere",
       projectId: null,
+      contactId: null,
+      dealId: null,
     });
     expect(result).toMatchObject({ ok: false, error: { code: "bad_column" } });
   });

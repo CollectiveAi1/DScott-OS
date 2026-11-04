@@ -21,11 +21,15 @@ export function TaskDrawer({
   task,
   boards,
   projects,
+  contacts,
+  deals,
   closeHref,
 }: {
   task: Task;
   boards: Board[];
   projects: { id: string; name: string }[];
+  contacts: { id: string; name: string }[];
+  deals: { id: string; name: string }[];
   closeHref: string;
 }) {
   const [state, action, pending] = useActionState(updateTaskAction, initial);
@@ -38,6 +42,8 @@ export function TaskDrawer({
   const [boardId, setBoardId] = useState(task.boardId ?? "");
   const [column, setColumn] = useState(task.boardColumn ?? "");
   const [projectId, setProjectId] = useState(task.projectId ?? "");
+  const [contactId, setContactId] = useState(task.contactId ?? "");
+  const [dealId, setDealId] = useState(task.dealId ?? "");
 
   const columns = boards.find((board) => board.id === boardId)?.columns ?? [];
 
@@ -104,16 +110,28 @@ export function TaskDrawer({
           onChange={setProjectId}
         />
 
-        <dl className="grid grid-cols-2 gap-2 border-t border-line pt-3 text-xs text-muted">
-          <div>
-            <dt className="inline">Contact: </dt>
-            <dd className="inline">{task.contactId ? "linked" : "— arrives with Contacts (M6)"}</dd>
-          </div>
-          <div>
-            <dt className="inline">Deal: </dt>
-            <dd className="inline">{task.dealId ? "linked" : "— arrives with Pipelines (M6)"}</dd>
-          </div>
-        </dl>
+        <div className="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
+          <Select
+            label="Contact"
+            name="contactId"
+            options={[
+              { value: "", label: contacts.length ? "No contact" : "No contacts yet" },
+              ...contacts.map((contact) => ({ value: contact.id, label: contact.name })),
+            ]}
+            value={contactId}
+            onChange={setContactId}
+          />
+          <Select
+            label="Deal"
+            name="dealId"
+            options={[
+              { value: "", label: deals.length ? "No deal" : "No deals yet" },
+              ...deals.map((deal) => ({ value: deal.id, label: deal.name })),
+            ]}
+            value={dealId}
+            onChange={setDealId}
+          />
+        </div>
 
         <p
           role={state.error ? "alert" : "status"}

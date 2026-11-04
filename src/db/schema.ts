@@ -141,6 +141,8 @@ export const pipelines = pgTable("pipelines", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
   stages: text("stages").array().notNull(),
+  // Stages that hand the deal to Ahmad for an invoice when it arrives there.
+  billingStages: text("billing_stages").array().notNull().default([]),
   arena: arenaEnum("arena").notNull().default("collective"),
   ...stamps,
 });
@@ -217,6 +219,12 @@ export const tasks = pgTable(
     arena: arenaEnum("arena").notNull().default("misc"),
     // True while a quick capture sits untriaged in the Misc inbox.
     fromMisc: boolean("from_misc").notNull().default(false),
+    /**
+     * Identity of the automation that created this task, e.g. "invoice:<dealId>:<stage>".
+     * Unique, so "only once per deal per stage" is a guarantee the database keeps rather than
+     * something the application remembers to check.
+     */
+    handoffKey: text("handoff_key"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     ...origin,
     ...stamps,
@@ -231,6 +239,7 @@ export const tasks = pgTable(
     index("tasks_misc_idx").on(t.fromMisc, t.createdAt),
     // The most common pair of Work filters.
     index("tasks_arena_status_idx").on(t.arena, t.status),
+    uniqueIndex("tasks_handoff_key_idx").on(t.handoffKey),
   ],
 );
 
@@ -352,7 +361,12 @@ export const timeline = pgTable(
     ...origin,
     ...stamps,
   },
-  (t) => [index("timeline_contact_idx").on(t.contactId), index("timeline_deal_idx").on(t.dealId)],
+  (t) => [
+    index("timeline_contact_idx").on(t.contactId),
+    index("timeline_deal_idx").on(t.dealId),
+    // The contact page reads newest-first for one person.
+    index("timeline_contact_created_idx").on(t.contactId, t.createdAt.desc()),
+  ],
 );
 
 export const approvals = pgTable(

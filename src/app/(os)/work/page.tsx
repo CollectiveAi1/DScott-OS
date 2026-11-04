@@ -19,6 +19,7 @@ import {
   taskById,
   type Task,
 } from "@/modules/work/queries";
+import { contactOptions, dealOptions } from "@/modules/crm/queries";
 
 export const metadata: Metadata = { title: "Work" };
 
@@ -41,7 +42,13 @@ export default async function WorkPage({
   const today = dateInZone(new Date(), timezone);
 
   const filters = parseFilters(await searchParams);
-  const [inbox, boards, projects] = await Promise.all([miscInbox(db), listBoards(db), projectOptions(db)]);
+  const [inbox, boards, projects, contacts, dealList] = await Promise.all([
+    miscInbox(db),
+    listBoards(db),
+    projectOptions(db),
+    contactOptions(db),
+    dealOptions(db),
+  ]);
 
   // The board picker defaults to the first board rather than leaving the view empty.
   const activeBoard = boards.find((board) => board.id === filters.board) ?? boards[0] ?? null;
@@ -136,6 +143,8 @@ export default async function WorkPage({
             task={open}
             boards={boards}
             projects={projects}
+            contacts={contacts}
+            deals={dealList}
             closeHref={`/work${filtersToQuery(resolved, { task: null })}`}
           />
         ) : null}

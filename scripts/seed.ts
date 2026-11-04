@@ -1,3 +1,4 @@
+import { and, eq, sql } from "drizzle-orm";
 import { boards, pipelines, settings } from "../src/db/schema";
 import { getHandle } from "../src/db/client";
 
@@ -12,12 +13,29 @@ const STARTER_BOARDS = [
   { name: "Misc", arena: "misc" as const },
 ];
 
-// Draft stages; Devon renames them in the app.
+// Draft stages; Devon renames them in Settings. billingStages are the stages that hand the
+// deal to Ahmad for an invoice when it arrives there.
 const STARTER_PIPELINES = [
-  { name: "Kinetic Scholar", stages: ["Target", "Intro", "Demo", "Pilot proposal", "Pilot signed", "Paid", "Lost"] },
-  { name: "Client builds", stages: ["Lead", "Scope call", "Quote sent", "Deposit", "Building", "Delivered", "Lost"] },
-  { name: "Civic Sports", stages: ["Inquiry", "Family call", "Plan sent", "Enrolled", "Active", "Closed"] },
-  { name: "Investors", stages: ["Researched", "Warm intro", "First meeting", "Diligence", "Committed", "Passed"] },
+  {
+    name: "Kinetic Scholar",
+    stages: ["Target", "Intro", "Demo", "Pilot proposal", "Pilot signed", "Paid", "Lost"],
+    billingStages: ["Pilot signed", "Paid"],
+  },
+  {
+    name: "Client builds",
+    stages: ["Lead", "Scope call", "Quote sent", "Deposit", "Building", "Delivered", "Lost"],
+    billingStages: ["Deposit"],
+  },
+  {
+    name: "Civic Sports",
+    stages: ["Inquiry", "Family call", "Plan sent", "Enrolled", "Active", "Closed"],
+    billingStages: ["Enrolled"],
+  },
+  {
+    name: "Investors",
+    stages: ["Researched", "Warm intro", "First meeting", "Diligence", "Committed", "Passed"],
+    billingStages: [],
+  },
 ];
 
 const handle = getHandle();
@@ -38,6 +56,16 @@ try {
     .insert(pipelines)
     .values(STARTER_PIPELINES.map((pipeline) => ({ ...pipeline, arena: "collective" as const })))
     .onConflictDoNothing();
+
+  // Backfill, not overwrite. A pipeline seeded before billingStages existed carries an empty
+  // array, which silently means "no billing handoff will ever fire". Fill those in, and leave
+  // alone any Devon has since configured in Settings.
+  for (const pipeline of STARTER_PIPELINES) {
+    await db
+      .update(pipelines)
+      .set({ billingStages: pipeline.billingStages })
+      .where(and(eq(pipelines.name, pipeline.name), sql`cardinality(${pipelines.billingStages}) = 0`));
+  }
 
   console.info("Seed complete.");
 } catch (error) {

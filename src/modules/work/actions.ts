@@ -7,6 +7,7 @@ import type { FormState } from "@/lib/auth/actions";
 import { requireOwner } from "@/lib/auth/session";
 import { dateInZone } from "@/lib/dates";
 import { getSettings } from "@/lib/settings";
+import { issueToMessage, optionalDate, optionalId, optionalText } from "@/lib/form-fields";
 import {
   captureTask,
   completeTask,
@@ -22,25 +23,29 @@ import {
 
 const ARENA = z.enum(["collective", "basketball", "family", "misc"]);
 const PRIORITY = z.enum(["urgent", "high", "normal", "low"]);
-const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date like 2026-11-30.");
 const UUID = z.string().uuid("That item is no longer there.");
-
-/** An empty form field means "not set", not an empty string. */
-const optionalText = z
-  .string()
-  .trim()
-  .transform((value) => (value === "" ? null : value));
-const optionalDate = optionalText.pipe(ISO_DATE.nullable());
-const optionalId = optionalText.pipe(UUID.nullable());
 
 /** Services speak Result; forms speak FormState. This is the only place the two meet. */
 function toFormState<T>(result: Result<T>, ok: string): FormState {
   return result.ok ? { ok } : { error: result.error.message };
 }
 
-function firstIssue(error: z.ZodError): FormState {
-  return { error: error.issues[0]?.message ?? "Check the form." };
-}
+const WORK_LABELS: Record<string, string> = {
+  title: "title",
+  notes: "notes",
+  due: "due date",
+  priority: "priority",
+  owner: "owner",
+  arena: "arena",
+  boardId: "board",
+  boardColumn: "column",
+  projectId: "project",
+  contactId: "contact",
+  dealId: "deal",
+  name: "name",
+};
+
+const firstIssue = (error: z.ZodError): FormState => issueToMessage(error, WORK_LABELS);
 
 async function today(): Promise<string> {
   const { timezone } = await getSettings();
@@ -133,6 +138,8 @@ const editSchema = z.object({
   boardId: optionalId,
   boardColumn: optionalText,
   projectId: optionalId,
+  contactId: optionalId,
+  dealId: optionalId,
 });
 
 export async function updateTaskAction(_prev: FormState, form: FormData): Promise<FormState> {

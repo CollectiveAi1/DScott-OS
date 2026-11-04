@@ -2,16 +2,17 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M5 shipped (Schedule import)
+## Status: M6 shipped (Contacts + Pipelines)
 
 | Done | Not yet |
 | --- | --- |
 | Owner account (`/setup`, `/login`), signed 30-day session, sign-out | Learning, Contacts, Pipelines, Approvals, Operator (M6–M9) |
-| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Contacts and Pipelines (M6) |
+| Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Learning (M7) |
 | Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Vercel project + Supabase database (needs a Supabase project) |
 | Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Approvals delivery, the daily brief and the weekly review (M7–M9) |
 | Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | Shared rate limit store (current limit is per instance) |
-| Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | The official team schedule itself, which has not arrived |
+| Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | Approvals delivery (M8) and the Operator (M9) |
+| Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | The official team schedule itself, which has not arrived |
 | Command: capture, live tiles, due this week, Conflicts, Needs attention | |
 | Settings: delivery mode, time zone, protected time, connections, export, job history | |
 | Encryption for stored keys, job runner, `/api/cron/tick` | |
@@ -143,6 +144,46 @@ each event links back to it.
 
 If Google revokes access — or the Testing-mode expiry hits — the connection is marked broken,
 syncing stops, and both Settings and Command say to reconnect.
+
+## Contacts and Pipelines
+
+**Contacts** is one search box over everything you might remember someone by — either name,
+email, phone, a tag, or their organisation — with a multi-select filter by type (Client,
+Prospect, Partner, Investor, Team, Athlete, Parent, Vendor).
+
+Each contact's page merges three histories into one feed, newest first: notes, calls and
+meetings you logged; tasks linked to them that got finished; and anything drafted to them
+through Approvals. It pages with a cursor, so a long history stays fast.
+
+**Do not contact** is a flag with teeth. It is enforced in the service, not the form, so nothing
+— no automation, and not the Operator — can draft a message to someone carrying it.
+
+**Pipelines** is a board per pipeline. A deal with no next step, or one whose next step is past
+due, gets a red edge and says which. That is the point of the screen: a board that looked calm
+while deals went quiet would be worse than no board. Values are typed the way you say them —
+`$1,250` — and stored as integer cents.
+
+Moving a deal records the move ("Quote sent → Deposit") on both the deal and the contact, which
+is what Command's "Deals moved · 7 days" counts.
+
+### Handoffs
+
+Two automations, both of which create a **task inside the OS**. Nothing is sent, and nobody is
+notified.
+
+| When | What |
+| --- | --- |
+| A deal reaches a billing stage | "Invoice: …" for Ahmad, due in 2 business days |
+| A contact becomes a Client | "Onboard: …" for Kenza, due in 2 business days |
+
+Each is created at most once: repeated moves, out-and-back moves and double clicks all produce
+one task, enforced by a unique key in the database rather than by a check that could be missed.
+
+### Editing stages
+
+Settings → Pipelines. The seeded stages are drafts. Renaming a stage **moves the deals standing
+in it** and keeps its billing flag; removing a stage that still has deals is refused and says how
+many.
 
 ## Importing the team schedule
 

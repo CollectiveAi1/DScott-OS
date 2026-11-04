@@ -12,6 +12,8 @@ import { availableCalendars } from "@/modules/google/service";
 import { readConnection } from "@/modules/google/tokens";
 import { count, eq } from "drizzle-orm";
 import { calendarEvents } from "@/db/schema";
+import { PipelineSettingsPanel } from "@/modules/crm/components/pipeline-settings";
+import { listPipelines } from "@/modules/crm/queries";
 import { DeliveryModeForm, PasswordForm, ProtectedTimeForm, TimezoneForm } from "./forms";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -97,6 +99,8 @@ export default async function SettingsPage({
     }
   }
 
+  const crmPipelines = await listPipelines(getDb());
+
   const [syncedCount] = await getDb()
     .select({ n: count() })
     .from(calendarEvents)
@@ -154,6 +158,21 @@ export default async function SettingsPage({
           timeZone={current.timezone}
           callbackUrl={callbackUrl()}
           notice={notice}
+        />
+      </Panel>
+
+      <Panel
+        id="pipelines-heading"
+        heading="Pipelines"
+        description="The seed's stages are drafts. Rename them, reorder them, and choose which ones raise an invoice task."
+      >
+        <PipelineSettingsPanel
+          pipelines={crmPipelines.map((pipeline) => ({
+            id: pipeline.id,
+            name: pipeline.name,
+            stages: pipeline.stages,
+            billingStages: pipeline.billingStages,
+          }))}
         />
       </Panel>
 
