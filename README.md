@@ -369,12 +369,22 @@ before connecting any real email or text provider.
 - Nothing reaches another person without an approval. The `approvals` table carries an idempotency key so a retried send cannot fire twice. Sandbox mode records approvals and delivers nothing.
 - Look: theme tokens live in `src/app/globals.css` (`@theme`). Current skin is the Collective AI parent system: deep navy, amber gold, Space Grotesk, JetBrains Mono. Swap the tokens to re-skin.
 
-## Corrections to the PRD
+## Models
 
-`docs/PRD.md` §6 names the models `claude-sonnet-5-5` and `claude-haiku-5-5`. **Neither id
-exists.** The code uses `claude-sonnet-5` (overridable with `OPERATOR_MODEL`) and
-`claude-haiku-4-5-20251001` (overridable with `SUMMARY_MODEL`), both resolved in one place,
-`src/lib/model.ts`. Flagged since M5 and still worth fixing in the PRD itself.
+`claude-sonnet-5` for the Operator and for reading a document it has never seen;
+`claude-haiku-4-5-20251001` for phrasing something already worked out. Both are overridable with
+`OPERATOR_MODEL` and `SUMMARY_MODEL`, and **both are resolved in one module, `src/lib/model.ts`**
+— never typed into a feature.
+
+A model id is a fact with a shelf life rather than a constant, so PRD §6.1 now requires one to be
+confirmed against the provider's current model list before it goes into a spec. The PRD used to
+name `claude-sonnet-5-5` and `claude-haiku-5-5`, neither of which has ever existed; that cost
+three milestones of working around a document, and was corrected on 2026-11-10.
+
+**The Google credentials in `.env.local` are placeholders** — right domain, wrong project number
+— so the Connections panel's states can be exercised locally. Settings says so when it sees
+them. Replace them with a real OAuth client before connecting anything, and see
+`docs/CONTEXT.md` → "Before the next OS is built from this one" before starting the next build.
 
 ## Known advisories
 

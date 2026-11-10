@@ -87,7 +87,7 @@ Local dev uses embedded Postgres (PGlite) under `.data/`. Only one process can o
 **Framework:** Next.js 15 App Router, React 19, TypeScript (strict, `noUncheckedIndexedAccess`), Tailwind 4.
 **Data:** Postgres via Drizzle ORM. Production: Supabase Postgres (transaction pooler, `prepare: false`). Local and tests: PGlite (`PGLITE_DIR=memory://` for tests).
 **Auth:** existing single-owner scrypt + HMAC cookie with session version. Keep it.
-**AI:** Anthropic API (`@anthropic-ai/sdk`). Default model `claude-sonnet-5-5` for the Operator, `claude-haiku-5-5` for cheap summarising, both overridable by env (`OPERATOR_MODEL`, `SUMMARY_MODEL`). No key → offline mode (§8.9).
+**AI:** Anthropic API (`@anthropic-ai/sdk`). Default model `claude-sonnet-5` for the Operator, `claude-haiku-4-5-20251001` for cheap summarising, both overridable by env (`OPERATOR_MODEL`, `SUMMARY_MODEL`). **Both ids are resolved in one module, `src/lib/model.ts`** — see §6.1. No key → offline mode (§8.9).
 **Integrations (v1):** Google Calendar API (read-only). **(v2):** Resend (email), Twilio (SMS), Stripe Checkout.
 **Hosting:** Vercel. Cron via `vercel.json` hitting `/api/cron/tick`.
 
@@ -110,6 +110,7 @@ tests/<module>.*.test.ts
 - **Dates:** store instants as `timestamptz`; compute "today", due windows and protected time in `settings.timezone` using `src/lib/dates.ts`. Never use the server's local time.
 - **Money:** integer cents. Format only at render.
 - **External calls:** each one has a timeout (default 10 s, LLM 60 s) and one retry with backoff for 429/5xx only. Validation and logic errors fail immediately.
+- **Model ids live in one module and are checked before they are written down.** A model id is a fact with a shelf life, not a constant: names change, versions are retired, and an id that reads plausibly may never have existed. So (a) every id is resolved in a single module (`src/lib/model.ts` here) and imported from there — never typed into a feature; (b) **before an id goes into a spec, a plan or this document, confirm it against the provider's current model list**, because a wrong one fails only at the first real call, which is usually long after the code was written and reviewed; (c) every id is overridable by env, so a retirement is a deployment change rather than a release.
 - **Logging:** `console.info/error` with a JSON object `{ event, ...context }`. Never log tokens, keys or message bodies.
 - **UI:** tokens from `globals.css` only, no hex in components. Semantic HTML, real `<button>`s, labels on every input, visible focus. Arena colours as tokens (`--color-arena-collective` etc., §8.0). Every screen has a designed empty state that says what will fill it.
 - **Lists** that can grow unbounded (timeline, operator messages, events) paginate with a cursor (`createdAt, id`).

@@ -133,8 +133,10 @@ export function GoogleConnection({
   timeZone,
   callbackUrl,
   notice,
+  placeholderCredentials,
 }: {
   status: "not_configured" | "none" | "ok" | "broken";
+  placeholderCredentials?: boolean;
   reason?: string;
   email?: string;
   calendars: CalendarOption[];
@@ -167,6 +169,17 @@ export function GoogleConnection({
 
   return (
     <div className="mt-4 space-y-4">
+      {placeholderCredentials ? (
+        <p role="alert" className="rounded-[--radius-control] border border-danger/40 px-3 py-2 text-sm text-danger">
+          <strong className="font-semibold">These look like placeholder credentials.</strong>{" "}
+          <span className="font-mono text-xs">GOOGLE_CLIENT_ID</span> is set, but not to the shape Google issues
+          (<span className="font-mono text-xs">123456789012-abc123.apps.googleusercontent.com</span>). Connecting
+          will most likely fail partway through Google&rsquo;s consent screen. Replace it and{" "}
+          <span className="font-mono text-xs">GOOGLE_CLIENT_SECRET</span> with the real pair from Google Cloud
+          Console and restart.
+        </p>
+      ) : null}
+
       {notice ? (
         <p role="status" className={`text-sm ${notice.startsWith("Connected") ? "text-accent" : "text-danger"}`}>
           {notice}

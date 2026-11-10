@@ -18,8 +18,38 @@ export class GoogleAuthError extends Error {
   }
 }
 
+/**
+ * The shape Google issues: the project number, a hyphen, a random string, then the domain —
+ * `123456789012-abc123def456.apps.googleusercontent.com`.
+ *
+ * The leading digits are the part that matters. A stand-in written to look plausible usually
+ * gets the domain right and the project number wrong, because the domain is the memorable half.
+ */
+const GOOGLE_CLIENT_ID = /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
+
 export function isConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+/**
+ * Set, but not with a credential Google issued.
+ *
+ * Placeholder values are the quiet failure mode here: `isConfigured()` only asks whether the
+ * variables exist, so a stand-in makes Settings say "configured" and then the consent flow dies
+ * somewhere on Google's side with a message that explains nothing. Checking the shape turns that
+ * into a sentence saying exactly what is wrong — to whoever deploys this, and to the next OS
+ * built from it.
+ *
+ * **This is a warning, never a block.** It is a judgement about a format, and if Google ever
+ * issues a different one a real credential would fail this check. So the caller shows the
+ * warning and leaves Connect working: being wrong here costs a sentence on screen, not a
+ * connection Devon cannot make.
+ */
+export function hasPlaceholderCredentials(): boolean {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return false;
+  return !GOOGLE_CLIENT_ID.test(clientId);
 }
 
 function credentials(): { clientId: string; clientSecret: string } {

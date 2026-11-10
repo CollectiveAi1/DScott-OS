@@ -39,3 +39,19 @@ Cheap checks run constantly; the production build runs only at SHIP.
 Workers receive a task payload: `task_id`, `task_type`, `inputs` (with `timeout_seconds`), `tool_allocations`, and a trace id. Any worker action that reaches another person or spends money returns an approval, never a direct send. Windows-MCP runs on the `balanced` policy.
 
 Full reference material lives in the claude.ai project docs `info for the OS` and `claude/os-context-additions.md`.
+
+## Before the next OS is built from this one
+
+This repository is the template. Three things in it are **specific to Devon's instance** and
+have to be replaced, not copied, when the next OS is built — and all three are the kind that
+look fine until the moment they don't.
+
+| Carry over | Replace, and why |
+| --- | --- |
+| `.env.local` | **Google OAuth credentials.** This instance ships placeholders that have the right domain and the wrong project number, so that Settings' connected and not-connected states can be exercised locally. They cannot complete a consent flow. Settings warns when it sees them (`hasPlaceholderCredentials`), which is the reminder — but a new OS needs its **own** Google Cloud OAuth client, with its own redirect URI, published rather than left in Testing |
+| `.env.local` and the deployment | **Every secret.** `AUTH_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET` are per instance. Reusing one means two OSes that can read each other's sessions or stored tokens. `openssl rand -base64 32` each, every time |
+| `docs/PRD.md` §6 | **Model ids.** They have a shelf life. Confirm each against the provider's current model list before it goes into a spec — a wrong one is valid-looking text that fails only at the first real call. See §6.1 |
+
+The first of these has already cost a confusing hour once: placeholder credentials make Settings
+say Google is configured, and then consent dies on Google's side with a message that explains
+nothing. That is why the check exists in the app rather than only in this document.

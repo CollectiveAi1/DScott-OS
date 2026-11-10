@@ -6,8 +6,12 @@
  * drift. The prompts and the output handling stay in their own modules — only the client, the
  * model names and the key check live here.
  *
- * **PRD §6 names `claude-sonnet-5-5` and `claude-haiku-5-5`. Neither exists.** The real ids are
- * below, and both are still overridable by env as the PRD intends.
+ * **This is the only place a model id is written down** (PRD §6.1). Ids have a shelf life:
+ * names change and versions are retired, so one id in one module is one edit, and every id is
+ * overridable by env so a retirement is a deployment change rather than a release.
+ *
+ * For the record, because it cost three milestones: the PRD originally named `claude-sonnet-5-5`
+ * and `claude-haiku-5-5`, neither of which has ever existed. Corrected in the PRD on 2026-11-10.
  */
 export const DEFAULT_OPERATOR_MODEL = "claude-sonnet-5";
 export const DEFAULT_SUMMARY_MODEL = "claude-haiku-4-5-20251001";

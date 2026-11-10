@@ -6,7 +6,7 @@ import { JOBS } from "@/modules/jobs/registry";
 import { recentRunsByJob } from "@/modules/jobs/queries";
 import { describeSchedule } from "@/modules/jobs/schedule";
 import type { JobRun } from "@/modules/jobs/service";
-import { callbackUrl, isConfigured } from "@/modules/google/api";
+import { callbackUrl, hasPlaceholderCredentials, isConfigured } from "@/modules/google/api";
 import { GoogleConnection, type CalendarOption } from "@/modules/google/components/connection";
 import { availableCalendars } from "@/modules/google/service";
 import { readConnection } from "@/modules/google/tokens";
@@ -92,6 +92,9 @@ export default async function SettingsPage({
   // The connection's own state decides how much of the panel there is to draw.
   const connection = isConfigured() ? await readConnection() : ({ status: "none" } as const);
   const panelStatus = !isConfigured() ? "not_configured" : connection.status;
+  // A warning, not a gate: the check is a judgement about a format, so it must never be able to
+  // stop Devon connecting a credential that is actually real.
+  const placeholderCredentials = isConfigured() && hasPlaceholderCredentials();
 
   let calendars: CalendarOption[] = [];
   if (panelStatus === "ok") {
@@ -152,6 +155,7 @@ export default async function SettingsPage({
       >
         <GoogleConnection
           status={panelStatus}
+          placeholderCredentials={placeholderCredentials}
           reason={connection.status === "broken" ? connection.reason : undefined}
           email={connection.status === "ok" ? connection.email : undefined}
           calendars={calendars}

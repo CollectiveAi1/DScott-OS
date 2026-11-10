@@ -127,6 +127,14 @@ That is where most answers are.
 
 ### Three things that have actually happened
 
+**Settings says "These look like placeholder credentials."**
+`GOOGLE_CLIENT_ID` is set but is not the shape Google issues
+(`123456789012-abc123.apps.googleusercontent.com`). Connecting will fail partway through the
+consent screen with a message that explains nothing. Replace both `GOOGLE_*` variables with the
+real pair from Google Cloud Console and restart. The Connect button still works — the check is a
+warning about a format, not a lock — so if the credentials really are real and the warning is
+wrong, carry on and tell whoever maintains this.
+
 **Google says "Reconnect" again a week after reconnecting.**
 The Google Cloud OAuth app is still in **Testing**, and test-mode refresh tokens expire after 7
 days. Publish the app in Google Cloud Console → OAuth consent screen. A single-user unverified
@@ -173,6 +181,11 @@ Do these in order, in one sitting. Steps 1–3 need accounts only you have.
 
 5. **Google OAuth**: in Google Cloud Console, create an OAuth client (web application) with the
    redirect URI `${APP_URL}/api/google/callback`. **Publish the consent screen** — see §6.
+
+   The repository ships **placeholder** Google credentials in `.env.local` for local testing —
+   the right domain with the wrong project number, so the Connections panel's states can be
+   exercised without a real client. Settings says so when it sees them: *"These look like
+   placeholder credentials."* The deployment needs the real pair; never copy these forward.
 6. **Check it**, in this order:
    - `/api/health` returns ok.
    - The deployed URL sends you to `/setup`. Create the owner account.

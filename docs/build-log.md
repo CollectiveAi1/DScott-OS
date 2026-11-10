@@ -737,3 +737,56 @@ already used; `/api/health` returns ok. No horizontal overflow at 375 px on Comm
 
 **Gate to v2: a week of Devon's actual life, in sandbox, with real data.** What broke, what he
 changed, and — most usefully — what he never opened.
+
+## 2026-11-10 · Post-v1 · The PRD's model ids, and a reminder that fires itself
+
+Branch `prd-model-ids`. Not a milestone — two corrections to things that would otherwise be
+inherited by the next OS built from this template.
+
+**The model ids are fixed at the source**
+
+PRD §6 named `claude-sonnet-5-5` and `claude-haiku-5-5`. Neither has ever existed. The code has
+worked around it since M5 and said so in three places; the PRD now names `claude-sonnet-5` and
+`claude-haiku-4-5-20251001`, and the three places that asserted "the PRD is wrong" were updated,
+because a stale correction is its own kind of wrong.
+
+**The rule, not just the fix.** PRD §6.1 gained a convention and `CLAUDE.md` gained a line: a
+model id is **a fact with a shelf life, not a constant**. Every id resolves in one module and is
+imported rather than typed into a feature; every id is overridable by env so a retirement is a
+deployment change rather than a release; and **an id is confirmed against the provider's current
+model list before it goes into a spec, a plan or the PRD**.
+
+That last clause is the one that matters. A wrong model id is valid-looking text. It passes
+review, it compiles, it has no test that can catch it, and it fails only at the first real API
+call — which here would have been in production, months after three people had read the line.
+
+**The placeholder credentials now say so themselves**
+
+`.env.local` ships placeholder Google credentials so the Connections panel's states can be
+exercised locally. `isConfigured()` only asks whether the variables exist, so they made Settings
+claim Google was configured and then consent died on Google's side with a message explaining
+nothing.
+
+`hasPlaceholderCredentials()` checks the shape of the client id, and Settings says *"These look
+like placeholder credentials"* with the real format alongside.
+
+**Found while building:** the first version checked for the `.apps.googleusercontent.com` suffix
+and **the placeholder passed it** — whoever wrote it got the memorable half right and the project
+number wrong. Caught by looking at the running page rather than trusting the test I had just
+written. The check now requires the full shape, `^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$`,
+and the actual placeholder is a test case.
+
+**It warns; it never blocks.** The first version replaced the whole panel, which would have let
+a judgement about a format lock Devon out of connecting a credential that was real. Being wrong
+now costs a sentence on screen, not a connection he cannot make.
+
+**Carried forward**
+
+`docs/CONTEXT.md` gained **"Before the next OS is built from this one"**: the three things in
+this repository that are specific to Devon's instance and must be replaced rather than copied —
+the Google OAuth client, every secret, and the model ids. All three look fine until they don't,
+which is why one of them is now checked by the app instead of only by a document.
+
+**Gate: passed.** `npm run check` green (typecheck, 670 tests, production build). Verified
+against the real placeholders in `.env.local`: Settings shows the warning and **Connect Google
+Calendar is still there**.

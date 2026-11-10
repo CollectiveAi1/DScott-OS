@@ -5,6 +5,8 @@
 - Nothing outbound (email, text, calendar write, post, payment) is sent directly. It becomes a row in `approvals`; delivery happens only after Devon approves and only in live mode.
 - Schema changes: edit `src/db/schema.ts`, then `npm run db:generate`. Never hand-edit applied migrations. Index every foreign key. Money is integer cents.
 - No secrets in code. Env vars or encrypted `settings.encrypted_keys` only.
+- Model ids have a shelf life. They live in one module (`src/lib/model.ts`), are imported from there rather than typed into a feature, and are confirmed against the provider's current model list before being written into a spec, a plan or the PRD. A wrong id is valid-looking text that fails only at the first real call.
+- Credentials and secrets are per instance. This repo's `.env.local` Google credentials are deliberate placeholders; a new instance or a new OS needs its own OAuth client and its own `AUTH_SECRET`, `ENCRYPTION_KEY` and `CRON_SECRET`. See `docs/CONTEXT.md` → "Before the next OS is built from this one".
 - Work moves DEFINE → PLAN → BUILD → VERIFY → REVIEW → SHIP. Read `docs/CONTEXT.md` first: it holds domain terms, where specs, plans and ADRs go, and the gate for each stage.
 - Every module starts with a spec in `docs/specs/` before code. Root-cause a bug before changing code for it.
 - Before pushing: `npm run check` (typecheck, tests, production build).
