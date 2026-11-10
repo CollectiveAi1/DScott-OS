@@ -9,6 +9,7 @@ import { QuickCapture } from "@/modules/work/components/quick-capture";
 import { AcknowledgeButton } from "@/modules/schedule/components/acknowledge";
 import { eventRange } from "@/modules/schedule/components/event-chip";
 import { BriefPanel } from "@/modules/operator/components/brief-panel";
+import { TodaySchedule } from "@/modules/schedule/components/today";
 
 export const metadata: Metadata = { title: "Command" };
 
@@ -30,8 +31,16 @@ function Tile({ label, value, detail, href }: { label: string; value: string; de
   );
 }
 
-export default async function CommandPage() {
+export default async function CommandPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const signedIn = await requireOwner();
+  const params = await searchParams;
+  // Open unless Devon has said otherwise, and his saying so lives in the URL like everything
+  // else on this screen.
+  const briefOpen = (Array.isArray(params.brief) ? params.brief[0] : params.brief) !== "closed";
   const { timezone } = await getSettings();
   const now = new Date();
   const snapshot = await loadCommand(timezone, now);
@@ -79,59 +88,7 @@ export default async function CommandPage() {
         />
       </section>
 
-      <section aria-labelledby="due-heading" className="mt-10">
-        <h2 id="due-heading" className="mb-3 text-lg font-semibold">
-          Due this week
-        </h2>
-        {snapshot.dueList.length === 0 ? (
-          <p className="rounded-[--radius-panel] border border-dashed border-line-strong px-4 py-6 text-sm text-muted">
-            Nothing due this week. Capture something above, or open{" "}
-            <Link href="/work" className="underline hover:text-ink">
-              Work
-            </Link>
-            .
-          </p>
-        ) : (
-          <ul className="divide-y divide-line rounded-[--radius-panel] border border-line bg-surface">
-            {snapshot.dueList.map((task) => {
-              const overdue = task.due !== null && task.due < snapshot.today;
-              return (
-                <li key={task.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
-                  <Link href={`/work?view=list&task=${task.id}`} className="hover:text-accent">
-                    {task.title}
-                  </Link>
-                  <span className="flex shrink-0 items-center gap-3">
-                    <ArenaTag arena={task.arena as ArenaName} />
-                    <span className={`font-mono text-xs ${overdue ? "text-danger" : "text-muted"}`}>
-                      {task.due}
-                      {overdue ? " · overdue" : ""}
-                    </span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <BriefPanel brief={snapshot.dailyBrief} />
-
-      {snapshot.learningReview ? (
-        <section aria-labelledby="review-heading" className="mt-10">
-          <h2 id="review-heading" className="mb-3 flex flex-wrap items-baseline gap-3 text-lg font-semibold">
-            Weekly review
-            <span className="font-mono text-xs text-muted">{snapshot.learningReview.day}</span>
-          </h2>
-          <div className="rounded-[--radius-panel] border border-line bg-surface p-4">
-            <p className="whitespace-pre-wrap text-sm text-ink">
-              {snapshot.learningReview.body.split("\n").slice(0, 4).join("\n")}
-            </p>
-            <Link href="/learning" className="mt-3 inline-block text-sm text-muted underline hover:text-ink">
-              Read it in Learning
-            </Link>
-          </div>
-        </section>
-      ) : null}
+      <BriefPanel brief={snapshot.dailyBrief} open={briefOpen} />
 
       {snapshot.conflicts.length > 0 ? (
         <section aria-labelledby="conflicts-heading" className="mt-10">
@@ -200,6 +157,60 @@ export default async function CommandPage() {
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      <section aria-labelledby="due-heading" className="mt-10">
+        <h2 id="due-heading" className="mb-3 text-lg font-semibold">
+          Due this week
+        </h2>
+        {snapshot.dueList.length === 0 ? (
+          <p className="rounded-[--radius-panel] border border-dashed border-line-strong px-4 py-6 text-sm text-muted">
+            Nothing due this week. Capture something above, or open{" "}
+            <Link href="/work" className="underline hover:text-ink">
+              Work
+            </Link>
+            .
+          </p>
+        ) : (
+          <ul className="divide-y divide-line rounded-[--radius-panel] border border-line bg-surface">
+            {snapshot.dueList.map((task) => {
+              const overdue = task.due !== null && task.due < snapshot.today;
+              return (
+                <li key={task.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
+                  <Link href={`/work?view=list&task=${task.id}`} className="hover:text-accent">
+                    {task.title}
+                  </Link>
+                  <span className="flex shrink-0 items-center gap-3">
+                    <ArenaTag arena={task.arena as ArenaName} />
+                    <span className={`font-mono text-xs ${overdue ? "text-danger" : "text-muted"}`}>
+                      {task.due}
+                      {overdue ? " · overdue" : ""}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <TodaySchedule events={snapshot.todaysEvents} timeZone={timezone} />
+
+      {snapshot.learningReview ? (
+        <section aria-labelledby="review-heading" className="mt-10">
+          <h2 id="review-heading" className="mb-3 flex flex-wrap items-baseline gap-3 text-lg font-semibold">
+            Weekly review
+            <span className="font-mono text-xs text-muted">{snapshot.learningReview.day}</span>
+          </h2>
+          <div className="rounded-[--radius-panel] border border-line bg-surface p-4">
+            <p className="whitespace-pre-wrap text-sm text-ink">
+              {snapshot.learningReview.body.split("\n").slice(0, 4).join("\n")}
+            </p>
+            <Link href="/learning" className="mt-3 inline-block text-sm text-muted underline hover:text-ink">
+              Read it in Learning
+            </Link>
+          </div>
         </section>
       ) : null}
     </div>

@@ -56,7 +56,10 @@ export const JOBS: JobDefinition[] = [
   },
   {
     name: "daily-brief",
-    schedule: { kind: "dailyAfter", time: "06:30" },
+    // PRD §8.1 says "after 06:30". On Vercel Hobby there is one cron a day, set to 11:00 UTC —
+    // which is 06:00 in New York in winter and 07:00 in summer. A 06:30 window would mean the
+    // brief quietly stopped being written every November. 05:00 covers both offsets.
+    schedule: { kind: "dailyAfter", time: "05:00" },
     purpose: "Writes the morning brief.",
     handler: async ({ db, timeZone, now }) => {
       const { dateInZone } = await import("@/lib/dates");

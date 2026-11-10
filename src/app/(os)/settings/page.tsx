@@ -17,6 +17,7 @@ import { listPipelines } from "@/modules/crm/queries";
 import { DeliveryModeForm, PasswordForm, ProtectedTimeForm, TimezoneForm } from "./forms";
 import { hasModelKey } from "@/lib/model";
 import { tokenUsage } from "@/modules/operator/queries";
+import { RunNow } from "@/modules/jobs/components/run-now";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -185,7 +186,7 @@ export default async function SettingsPage({
       <Panel
         id="jobs-heading"
         heading="Scheduled jobs"
-        description="The last 10 runs of each job. Jobs run from one cron tick every few minutes."
+        description="The last 10 runs of each job. The deploy runs one cron a day, so Run now is how anything happens in between."
       >
         <ul className="mt-4 space-y-5">
           {JOBS.map((job) => {
@@ -196,6 +197,7 @@ export default async function SettingsPage({
                 <p className="text-xs text-muted">
                   {describeSchedule(job.schedule)} · {job.purpose}
                 </p>
+                <RunNow job={job.name} />
                 {runs.length === 0 ? (
                   <p className="mt-1 text-xs text-muted/70">No runs yet.</p>
                 ) : (

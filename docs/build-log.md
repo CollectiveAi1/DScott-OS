@@ -659,3 +659,81 @@ KeyboardEvent, because this environment's key injection delivers `key: ""`; the 
 loosened to accommodate that. With a deliberately bad key the failure path ran for real: the
 error showed, the composer kept its text, and the thread was left with the user's message and no
 assistant row. No horizontal overflow at 375 px with every tool call expanded.
+
+## 2026-11-10 · M10 · Command complete + deploy
+
+Spec `docs/specs/SPEC-010-command-deploy.md`, plan `docs/plans/PLAN-010-command-deploy.md`,
+branch `m10-command-deploy`. **This completes v1.**
+
+Nothing new was invented here. Every module already worked; M10 was about the two places where
+that stopped being true for Devon — the screen he opens first, and the machine it runs on.
+
+**Decided with Devon at DEFINE**
+
+- **Vercel Hobby, one cron a day**, `0 11 * * *`. Hobby allows no more, and the same config is
+  correct on Pro, so the plan can change later without a code change.
+
+**The bug this milestone existed to find**
+
+`0 11 * * *` is **06:00 in New York in winter** and 07:00 in summer. The morning brief's window
+was "after 06:30" — so on the deploy as configured, **the brief would have been written all
+summer and silently stopped every November**. Nothing would have errored; there would simply
+have been no brief, and the only clue would have been the season.
+
+The window was widened to 05:00 rather than the cron moved later, because 12:00 UTC would put
+the brief at 07:00 and 08:00 — later than Devon wants to read it. Tested at both offsets, and
+`vercel.json` is asserted by a test so the two cannot drift apart.
+
+This is the kind of thing a deploy milestone is for. It is not findable by reading the code and
+it is not findable in July.
+
+**Decisions**
+
+- **Command's order is the argument.** Tiles are the glance, the brief is the read, conflicts
+  and needs attention are what will cost something if unseen — so they sit above the two lists
+  rather than under them. Reference goes last.
+- **The brief is a `<details>`** with its state in the URL (`?brief=closed`), like every other
+  piece of state since M2. No JavaScript, survives a reload, and a link can carry either.
+- **Needs attention gained its last three sources** — failed approvals, jobs that errored in the
+  last 24 h, and deals with no or an overdue next step. Ordered by **what it costs to ignore**,
+  not by which module noticed. Every row says what clears it; the panel hides when empty, since
+  one that is always on screen stops being read.
+- **One row per failed job, not per run.** `approvals-deliver` fails every tick while no
+  provider is connected, and twelve identical rows would bury the other four sources.
+- **One row per stalled deal, not a count.** The next-step discipline is per deal, and a count
+  is not something you can act on.
+- **A next step with no date is not overdue.** Undated is Devon's call; inventing a deadline
+  would be the OS enforcing a rule nobody set.
+- **Run now ignores the schedule.** On a once-a-day cron, a button that respects the due check
+  would do nothing for the rest of the day — which is the one moment it is wanted. It still goes
+  through `runJob`, so a manual run is recorded exactly like a scheduled one.
+- **The weekly review sits after today's schedule**, outside PRD §8.10's list of eight. It did
+  not exist when §8.10 was written, and a once-a-week read does not belong among the daily ones.
+
+**The runbook**
+
+`docs/runbook.md`, written for someone at 7am with something broken rather than for a developer
+reading in order: every environment variable and what breaks without it, how to rotate each
+secret and what it signs out, what the export does and does not carry, every Needs-attention row
+and what clears it, the three failures that have actually happened, and a first-deploy checklist.
+It also says plainly **what is normal and not worth chasing** — `approvals-deliver` erroring
+with no provider, `google-sync` skipping with no calendars picked, the Operator closed with no
+key.
+
+**Deferred**
+
+- The deploy itself. It needs Devon's Supabase and Vercel accounts; runbook §7 is the handoff.
+- Everything in v2. A week of real use is the input to deciding what v2 is — guessing now would
+  waste the week.
+
+**Gate: passed.** `npm run check` green (typecheck, 663 tests, production build).
+`npm audit --omit=dev` reports only the pre-existing PostCSS-inside-Next advisory. Exercised
+against `next dev`: Command renders the eight sections in order; **Needs attention showed all
+five sources** — two failed approvals, one failed job, two stale captures and a deal with no
+next step — while a job failure from 30 hours ago was correctly absent, and the Conflicts section
+hid itself on a day with no clashes; the brief collapsed and `?brief=closed` survived a reload;
+**Run now on `daily-brief` ran twice in one day**, both recorded, the second with its window
+already used; `/api/health` returns ok. No horizontal overflow at 375 px on Command or Settings.
+
+**Gate to v2: a week of Devon's actual life, in sandbox, with real data.** What broke, what he
+changed, and — most usefully — what he never opened.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { describeSchedule, isJobDue, type JobSchedule } from "../src/modules/jobs/schedule";
+import { readFile } from "node:fs/promises";
+import { JOBS } from "../src/modules/jobs/registry";
 
 const ZONE = "America/New_York";
 const interval: JobSchedule = { kind: "interval", everyMinutes: 10 };
@@ -81,5 +83,44 @@ describe("describeSchedule", () => {
     expect(describeSchedule(interval)).toBe("Every 10 min");
     expect(describeSchedule(daily)).toBe("Daily after 06:30");
     expect(describeSchedule(weekly)).toBe("Sun after 18:00");
+  });
+});
+
+/**
+ * The deploy runs one cron a day (Vercel Hobby), at 11:00 UTC. In New York that is 06:00 in
+ * winter and 07:00 in summer, so the brief's window has to contain both — a 06:30 window would
+ * write the brief all summer and silently stop every November.
+ */
+describe("the daily-brief window against the one daily cron", () => {
+  const NY = "America/New_York";
+  const brief = JOBS.find((job) => job.name === "daily-brief");
+
+  it("is registered with a window that both offsets clear", () => {
+    expect(brief?.schedule).toEqual({ kind: "dailyAfter", time: "05:00" });
+  });
+
+  it("is due on a winter tick, when 11:00 UTC is 06:00 local", () => {
+    // 2026-11-10 is EST (UTC-5).
+    expect(isJobDue(brief!.schedule, null, new Date("2026-11-10T11:00:00Z"), NY)).toBe(true);
+  });
+
+  it("is due on a summer tick, when 11:00 UTC is 07:00 local", () => {
+    // 2026-07-10 is EDT (UTC-4).
+    expect(isJobDue(brief!.schedule, null, new Date("2026-07-10T11:00:00Z"), NY)).toBe(true);
+  });
+
+  it("still runs only once a local day", () => {
+    const ranThisMorning = new Date("2026-11-10T11:00:00Z");
+    expect(isJobDue(brief!.schedule, ranThisMorning, new Date("2026-11-10T18:00:00Z"), NY)).toBe(false);
+    expect(isJobDue(brief!.schedule, ranThisMorning, new Date("2026-11-11T11:00:00Z"), NY)).toBe(true);
+  });
+});
+
+describe("vercel.json", () => {
+  it("is the one daily cron the Hobby plan allows", async () => {
+    const config = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8")) as {
+      crons: { path: string; schedule: string }[];
+    };
+    expect(config.crons).toEqual([{ path: "/api/cron/tick", schedule: "0 11 * * *" }]);
   });
 });

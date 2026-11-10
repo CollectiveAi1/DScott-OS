@@ -2,21 +2,22 @@
 
 Devon Scott's operating system: one home base for Collective AI, basketball, family and everything else. Built from Blueprint v0.1. It is also the pilot for the OS-building process: decisions made here are logged so the next OS starts from them.
 
-## Status: M9 shipped (Operator + daily brief)
+## Status: v1 complete — M10 shipped (Command + deploy)
 
 | Done | Not yet |
 | --- | --- |
-| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | The final Command screen, and the Vercel + Supabase deploy (M10) |
+| Owner account (`/setup`, `/login`), signed 30-day session, sign-out | The deploy itself — needs your Supabase and Vercel accounts ([runbook §7](docs/runbook.md)) |
 | Quick capture with `#arena`, `!priority` and `due:` tokens, on Command and the phone bar | Email and text providers — v2, and going live is blocked until one exists |
-| Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | Vercel project + Supabase database (needs a Supabase project) |
+| Work: Misc inbox, board and list views, filters, move, complete, task drawer, projects | A week of real sandbox use — the gate to v2 |
 | Schedule: Agenda, Week, Day and Month views, manual events, conflicts, protected time | Shared rate limit store (current limit is per instance) |
-| Google Calendar read into Family: OAuth, calendar picker, 10-minute sync, Reconnect | The official team schedule itself, which has not arrived |
+| Google Calendar read into Family: OAuth, calendar picker, Sync now, Reconnect | The official team schedule itself, which has not arrived |
 | Schedule import: CSV, or a PDF/image through the Operator, previewed before anything saves | Streaming Operator replies, and a spend cap — both want real usage behind them |
 | Contacts with a merged timeline, pipelines with next-step discipline, handoff tasks | |
 | Learning: skills, practice log, and a weekly review written every Sunday | |
 | Approvals: the gate every outbound action passes through | |
 | Operator: 18 tools, visible tool calls, and a morning brief on Command | |
-| Command: capture, live tiles, due this week, Conflicts, Needs attention, today's brief | |
+| Command: eight sections in the order a morning happens; Needs attention complete | |
+| `docs/runbook.md`: env vars, secret rotation, restore, every failure mode | |
 | Settings: delivery mode, time zone, protected time, connections, export, job history | |
 | Encryption for stored keys, job runner, `/api/cron/tick` | |
 | Schema for all v1 tables, tracked migrations, idempotent seed | |
@@ -97,22 +98,32 @@ See `.env.example`. In production `AUTH_SECRET` and `DATABASE_URL` are required;
 
 ## Scheduled jobs
 
-One cron tick runs every due job in sequence. `vercel.json` schedules `/api/cron/tick` every
-5 minutes, and Vercel Cron sends `Authorization: Bearer $CRON_SECRET` when the variable is set.
+One cron tick runs every due job in sequence. `vercel.json` schedules `/api/cron/tick` at
+`0 11 * * *`, and Vercel Cron sends `Authorization: Bearer $CRON_SECRET` when the variable is set.
 
-| Job | Cadence | Ships in |
+| Job | Declared cadence | What it does |
 | --- | --- | --- |
-| `google-sync` | every 10 min | M4 |
-| `approvals-deliver` | every 5 min | M8 |
-| `daily-brief` | daily after 06:30 local | M9 |
-| `learning-review` | Sundays after 18:00 local | M7 |
+| `google-sync` | every 10 min | Pulls the Family calendar from Google |
+| `approvals-deliver` | every 5 min | Delivers approved items, live mode only |
+| `daily-brief` | daily after 05:00 local | Writes the morning brief |
+| `learning-review` | Sundays after 18:00 local | Writes the weekly review |
 
-All four are registered now and report `skipped` until their milestone lands. Every run that
-happens is recorded in `job_runs` and the last 10 per job are shown in Settings. A job that fails
-is recorded and never blocks the others in the same tick.
+**Vercel Hobby allows one cron a day**, so that is what `vercel.json` says, and each job's
+declared cadence is the ceiling rather than the reality: a job runs on the daily tick if it is
+due. **Settings → Scheduled jobs → Run now** runs any single job on demand, ignoring the
+schedule — that is how anything happens in between, and it is recorded in the history exactly
+like a scheduled run.
 
-**Vercel Hobby only allows daily crons.** On Hobby, change the schedule in `vercel.json` to
-`0 11 * * *` and use the "Sync now" buttons that arrive with M4 and M8. Confirm the plan at deploy.
+`0 11 * * *` is 06:00 in New York in winter and 07:00 in summer, which is why `daily-brief`'s
+window starts at 05:00 rather than the PRD's 06:30: a 06:30 window would write the brief all
+summer and silently stop every November.
+
+On Pro, change the schedule to `*/5 * * * *` and each job's own cadence starts being respected.
+**Do that before connecting any real email or text provider** — delivery is designed around a
+5-minute tick, and on a daily one an approved message would wait up to a day.
+
+Every run is recorded in `job_runs`; the last 10 per job are in Settings. A job that fails is
+recorded and never blocks the others in the same tick.
 
 Run one tick by hand:
 
@@ -332,10 +343,21 @@ later import.
 
 ## Deploy (Vercel + Supabase)
 
-1. Create a Supabase project. Copy the pooled connection string (transaction pooler, port 6543) into `DATABASE_URL`.
+**[`docs/runbook.md`](docs/runbook.md) is the real document** — every environment variable, how
+to rotate each secret, what to do when something breaks, and the first-deploy checklist. The
+short version:
+
+1. Create a Supabase project. Copy the **transaction pooler** connection string (port 6543) into `DATABASE_URL`.
 2. Import this repo in Vercel. Set `AUTH_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET` (`openssl rand -base64 32` each), `DATABASE_URL`, `APP_URL`, `OS_TIMEZONE`, the two `GOOGLE_*` variables, and `ANTHROPIC_API_KEY`.
-3. Run `DATABASE_URL=... npm run db:migrate && npm run db:seed` once from your machine.
+3. Run `DATABASE_URL=... npm run db:migrate && DATABASE_URL=... npm run db:seed` once from your machine.
 4. Open the deployed URL. It goes to `/setup`.
+5. Check `/api/health`, connect Google, and press **Run now** on `daily-brief` in Settings.
+
+**The cron is once a day**, at `0 11 * * *` — the Vercel Hobby limit. That is 06:00 in New York
+in winter and 07:00 in summer, and the morning brief's window starts at 05:00 so both land inside
+it. **Settings → Scheduled jobs → Run now** runs any job on demand in between. On Pro, change
+`vercel.json` to `*/5 * * * *` and each job's own schedule starts being respected — do that
+before connecting any real email or text provider.
 
 ## How it's built
 
